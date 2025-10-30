@@ -20,10 +20,13 @@ export interface Event {
   max_participantes: number;
   recorrencia: Recorrencia;
   dia_semana: number | null;
+  data_evento: string | null; // Data específica para eventos únicos (YYYY-MM-DD)
   horario_inicio: string;
   horario_fim: string;
   valor_por_pessoa: number;
   local: string | null;
+  latitude: number | null;
+  longitude: number | null;
   descricao: string | null;
   criador_id: string;
   status: StatusEvento;

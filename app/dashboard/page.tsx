@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import CreateEventModal from "../components/CreateEventModal";
 import EventAnalyticsModal from "../components/EventAnalyticsModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/types/database.types";
@@ -14,11 +15,13 @@ import type { Event } from "@/types/database.types";
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
-  const [eventId, setEventId] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [deletingEvent, setDeletingEvent] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "view" | "edit">("create");
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
@@ -62,12 +65,17 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  const handleSearchById = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (eventId.trim()) {
-      router.push(`/evento/${eventId}`);
-    }
-  };
+  // Filtrar eventos baseado no termo de busca
+  const filteredEvents = myEvents.filter((event) => {
+    if (!searchTerm.trim()) return true;
+    
+    const search = searchTerm.toLowerCase();
+    return (
+      event.titulo.toLowerCase().includes(search) ||
+      event.id.toLowerCase().includes(search) ||
+      event.local?.toLowerCase().includes(search)
+    );
+  });
 
   const handleCreateEvent = () => {
     setModalMode("create");
@@ -90,6 +98,40 @@ export default function DashboardPage() {
   const handleViewAnalytics = (event: Event) => {
     setSelectedEvent(event);
     setIsAnalyticsOpen(true);
+  };
+
+    const handleDeleteEvent = (event: Event) => {
+    setSelectedEvent(event);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedEvent) return;
+
+    setDeletingEvent(true);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', selectedEvent.id);
+
+      if (error) {
+        console.error('Erro ao excluir evento:', error);
+        alert('Erro ao excluir evento. Tente novamente.');
+        return;
+      }
+
+      // Remove o evento da lista local
+      setMyEvents(prev => prev.filter(e => e.id !== selectedEvent.id));
+      setIsDeleteModalOpen(false);
+      setSelectedEvent(null);
+      alert('Evento excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir evento:', error);
+      alert('Erro ao excluir evento. Tente novamente.');
+    } finally {
+      setDeletingEvent(false);
+    }
   };
 
   if (loading) {
@@ -126,26 +168,36 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Busca por ID */}
+          {/* Busca de Eventos */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              Buscar Evento por ID
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              🔍 Buscar Evento
             </h2>
-            <form onSubmit={handleSearchById} className="flex gap-4">
+            <div className="relative">
               <input
                 type="text"
-                value={eventId}
-                onChange={(e) => setEventId(e.target.value)}
-                placeholder="Digite o ID do evento"
-                className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Digite o título, ID ou local do evento..."
+                className="w-full px-4 py-3 pl-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
-              <button
-                type="submit"
-                className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Buscar
-              </button>
-            </form>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">
+                🔎
+              </span>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {searchTerm && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                {filteredEvents.length} evento(s) encontrado(s)
+              </p>
+            )}
           </div>
 
           {/* Seções de Eventos */}
@@ -168,17 +220,34 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin h-8 w-8 border-4 border-green-600 border-t-transparent rounded-full"></div>
                 </div>
-              ) : myEvents.length > 0 ? (
+              ) : filteredEvents.length > 0 ? (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {myEvents.map((event) => (
+                  {filteredEvents.map((event) => (
                     <EventCard 
                       key={event.id} 
                       event={event}
                       onView={() => handleViewEvent(event)}
                       onEdit={() => handleEditEvent(event)}
                       onAnalytics={() => handleViewAnalytics(event)}
+                      onDelete={() => handleDeleteEvent(event)}
                     />
                   ))}
+                </div>
+              ) : searchTerm ? (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <div className="text-5xl mb-4">🔍</div>
+                    <p className="text-lg mb-2">Nenhum evento encontrado</p>
+                    <p className="text-sm mb-4">
+                      Não encontramos eventos com "{searchTerm}"
+                    </p>
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+                    >
+                      Limpar Busca
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
@@ -262,6 +331,18 @@ export default function DashboardPage() {
           event={selectedEvent}
         />
       )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedEvent(null);
+        }}
+        onConfirm={confirmDelete}
+        eventTitle={selectedEvent?.titulo || ''}
+        loading={deletingEvent}
+      />
     </>
   );
 }
@@ -271,12 +352,14 @@ function EventCard({
   event, 
   onView, 
   onEdit,
-  onAnalytics 
+  onAnalytics,
+  onDelete
 }: { 
   event: Event; 
   onView: () => void;
   onEdit: () => void;
   onAnalytics: () => void;
+  onDelete: () => void;
 }) {
   const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const tipoLabels: Record<string, string> = {
@@ -287,6 +370,27 @@ function EventCard({
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border-l-4 border-green-600">
+      {/* ID do Evento */}
+      <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-gray-400 dark:text-gray-500">ID:</span>
+          <code className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
+            {event.id.slice(0, 8)}...
+          </code>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(event.id);
+              alert("ID copiado!");
+            }}
+            className="text-gray-400 hover:text-green-600 transition-colors"
+            title="Copiar ID completo"
+          >
+            📋
+          </button>
+        </div>
+      </div>
+
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
@@ -357,13 +461,22 @@ function EventCard({
             Editar
           </button>
         </div>
-        <button 
-          onClick={onAnalytics}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-        >
-          <span>📊</span>
-          Analytics
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={onAnalytics}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+          >
+            <span>📊</span>
+            Analytics
+          </button>
+          <button 
+            onClick={onDelete}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+            title="Excluir evento"
+          >
+            <span>🗑️</span>
+          </button>
+        </div>
       </div>
     </div>
   );

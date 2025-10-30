@@ -5,6 +5,8 @@ import Modal from "./Modal";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import type { Event, Database } from "@/types/database.types";
+import LocationSearch from "./LocationSearch";
+import WeatherWidget from "./WeatherWidget";
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -31,10 +33,13 @@ export default function CreateEventModal({
     max_participantes: 22,
     recorrencia: "unico",
     dia_semana: "",
+    data_evento: "",
     horario_inicio: "",
     horario_fim: "",
     valor_por_pessoa: "0",
     local: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
     descricao: "",
   });
 
@@ -47,10 +52,13 @@ export default function CreateEventModal({
         max_participantes: eventData.max_participantes || 22,
         recorrencia: eventData.recorrencia || "unico",
         dia_semana: eventData.dia_semana !== null ? eventData.dia_semana.toString() : "",
+        data_evento: eventData.data_evento || "",
         horario_inicio: eventData.horario_inicio || "",
         horario_fim: eventData.horario_fim || "",
         valor_por_pessoa: eventData.valor_por_pessoa?.toString() || "0",
         local: eventData.local || "",
+        latitude: eventData.latitude || null,
+        longitude: eventData.longitude || null,
         descricao: eventData.descricao || "",
       });
     } else if (mode === "create") {
@@ -61,10 +69,13 @@ export default function CreateEventModal({
         max_participantes: 22,
         recorrencia: "unico",
         dia_semana: "",
+        data_evento: "",
         horario_inicio: "",
         horario_fim: "",
         valor_por_pessoa: "0",
         local: "",
+        latitude: null,
+        longitude: null,
         descricao: "",
       });
     }
@@ -98,6 +109,10 @@ export default function CreateEventModal({
         throw new Error("Horários de início e fim são obrigatórios");
       }
 
+      if (formData.recorrencia === "unico" && !formData.data_evento) {
+        throw new Error("Data do evento é obrigatória para eventos únicos");
+      }
+
       if (formData.recorrencia === "semanal" && !formData.dia_semana) {
         throw new Error("Dia da semana é obrigatório para eventos semanais");
       }
@@ -111,10 +126,13 @@ export default function CreateEventModal({
           tipo_futebol: formData.tipo_futebol as "campo" | "salao" | "society",
           max_participantes: parseInt(formData.max_participantes.toString()),
           recorrencia: formData.recorrencia as "unico" | "semanal",
+          data_evento: formData.recorrencia === "unico" ? formData.data_evento || null : null,
           horario_inicio: formData.horario_inicio,
           horario_fim: formData.horario_fim,
           valor_por_pessoa: parseFloat(formData.valor_por_pessoa),
           local: formData.local.trim() || null,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
           descricao: formData.descricao.trim() || null,
           dia_semana: formData.recorrencia === "semanal" ? parseInt(formData.dia_semana) : null,
         };
@@ -140,10 +158,13 @@ export default function CreateEventModal({
           tipo_futebol: formData.tipo_futebol as "campo" | "salao" | "society",
           max_participantes: parseInt(formData.max_participantes.toString()),
           recorrencia: formData.recorrencia as "unico" | "semanal",
+          data_evento: formData.recorrencia === "unico" ? formData.data_evento || null : null,
           horario_inicio: formData.horario_inicio,
           horario_fim: formData.horario_fim,
           valor_por_pessoa: parseFloat(formData.valor_por_pessoa),
           local: formData.local.trim() || null,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
           descricao: formData.descricao.trim() || null,
           dia_semana: formData.recorrencia === "semanal" ? parseInt(formData.dia_semana) : null,
           criador_id: user.id,
@@ -174,10 +195,13 @@ export default function CreateEventModal({
         max_participantes: 22,
         recorrencia: "unico",
         dia_semana: "",
+        data_evento: "",
         horario_inicio: "",
         horario_fim: "",
         valor_por_pessoa: "0",
         local: "",
+        latitude: null,
+        longitude: null,
         descricao: "",
       });
 
@@ -215,6 +239,15 @@ export default function CreateEventModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Widget de Clima (apenas no modo visualização) */}
+        {mode === "view" && formData.latitude && formData.longitude && (
+          <WeatherWidget
+            latitude={formData.latitude}
+            longitude={formData.longitude}
+            eventTitle={formData.titulo}
+          />
+        )}
+
         {/* Mensagem de erro */}
         {error && (
           <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -311,6 +344,30 @@ export default function CreateEventModal({
             <option value="semanal">Evento Semanal</option>
           </select>
         </div>
+
+        {/* Data do Evento (se único) */}
+        {formData.recorrencia === "unico" && (
+          <div>
+            <label
+              htmlFor="data_evento"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Data do Evento *
+            </label>
+            <input
+              type="date"
+              id="data_evento"
+              name="data_evento"
+              value={formData.data_evento}
+              onChange={handleChange}
+              readOnly={isReadOnly}
+              disabled={isReadOnly}
+              min={new Date().toISOString().split('T')[0]}
+              className={`w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
+              required={!isReadOnly}
+            />
+          </div>
+        )}
 
         {/* Dia da Semana (se semanal) */}
         {formData.recorrencia === "semanal" && (
@@ -410,19 +467,39 @@ export default function CreateEventModal({
             htmlFor="local"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >
-            Local
+            Local 📍
           </label>
-          <input
-            type="text"
-            id="local"
-            name="local"
-            value={formData.local}
-            onChange={handleChange}
-            readOnly={isReadOnly}
-            disabled={isReadOnly}
-            className={`w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
-            placeholder="Ex: Quadra do Clube ABC"
-          />
+          {isReadOnly ? (
+            <input
+              type="text"
+              id="local"
+              name="local"
+              value={formData.local}
+              readOnly
+              disabled
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white opacity-70 cursor-not-allowed"
+            />
+          ) : (
+            <LocationSearch
+              value={formData.local}
+              onChange={(location, lat, lon) => {
+                setFormData({
+                  ...formData,
+                  local: location,
+                  latitude: lat,
+                  longitude: lon,
+                });
+                if (error) setError(null);
+              }}
+              disabled={isReadOnly}
+              placeholder="Digite o endereço (ex: Avenida Paulista, São Paulo)"
+            />
+          )}
+          {formData.latitude && formData.longitude && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              📌 Coordenadas: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+            </p>
+          )}
         </div>
 
         {/* Descrição */}
