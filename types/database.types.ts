@@ -41,9 +41,21 @@ export interface Database {
       };
       events: {
         Row: Event;
-        Insert: Omit<Event, 'id' | 'created_at' | 'updated_at'>;
+        Insert: Omit<Event, 'id' | 'status' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Event, 'id' | 'criador_id' | 'created_at' | 'updated_at'>>;
       };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 }

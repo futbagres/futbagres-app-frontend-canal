@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import type { Event } from "@/types/database.types";
+import type { Event, Database } from "@/types/database.types";
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -102,35 +102,27 @@ export default function CreateEventModal({
         throw new Error("Dia da semana é obrigatório para eventos semanais");
       }
 
-      // Preparar dados para inserção
-      const eventData: any = {
-        titulo: formData.titulo.trim(),
-        tipo_futebol: formData.tipo_futebol,
-        max_participantes: parseInt(formData.max_participantes.toString()),
-        recorrencia: formData.recorrencia,
-        horario_inicio: formData.horario_inicio,
-        horario_fim: formData.horario_fim,
-        valor_por_pessoa: parseFloat(formData.valor_por_pessoa),
-        local: formData.local.trim() || null,
-        descricao: formData.descricao.trim() || null,
-        criador_id: user.id,
-      };
-
-      // Adicionar dia_semana apenas se for semanal
-      if (formData.recorrencia === "semanal") {
-        eventData.dia_semana = parseInt(formData.dia_semana);
-      }
-
       if (mode === "edit" && eventData) {
         // Atualizar evento existente
         console.log("✏️ Atualizando evento:", eventData.id);
         
-        const updateData = { ...eventData };
-        delete updateData.criador_id; // Não permitir alterar o criador
+        const updatePayload: Database['public']['Tables']['events']['Update'] = {
+          titulo: formData.titulo.trim(),
+          tipo_futebol: formData.tipo_futebol as "campo" | "salao" | "society",
+          max_participantes: parseInt(formData.max_participantes.toString()),
+          recorrencia: formData.recorrencia as "unico" | "semanal",
+          horario_inicio: formData.horario_inicio,
+          horario_fim: formData.horario_fim,
+          valor_por_pessoa: parseFloat(formData.valor_por_pessoa),
+          local: formData.local.trim() || null,
+          descricao: formData.descricao.trim() || null,
+          dia_semana: formData.recorrencia === "semanal" ? parseInt(formData.dia_semana) : null,
+        };
         
         const { data, error: updateError } = await supabase
           .from("events")
-          .update(updateData)
+          // @ts-ignore - Supabase types issue
+          .update(updatePayload)
           .eq("id", eventData.id)
           .select()
           .single();
@@ -143,11 +135,26 @@ export default function CreateEventModal({
         console.log("✅ Evento atualizado com sucesso:", data);
       } else {
         // Criar novo evento
-        console.log("📝 Criando novo evento com dados:", eventData);
+        const insertPayload: Database['public']['Tables']['events']['Insert'] = {
+          titulo: formData.titulo.trim(),
+          tipo_futebol: formData.tipo_futebol as "campo" | "salao" | "society",
+          max_participantes: parseInt(formData.max_participantes.toString()),
+          recorrencia: formData.recorrencia as "unico" | "semanal",
+          horario_inicio: formData.horario_inicio,
+          horario_fim: formData.horario_fim,
+          valor_por_pessoa: parseFloat(formData.valor_por_pessoa),
+          local: formData.local.trim() || null,
+          descricao: formData.descricao.trim() || null,
+          dia_semana: formData.recorrencia === "semanal" ? parseInt(formData.dia_semana) : null,
+          criador_id: user.id,
+        };
+        
+        console.log("📝 Criando novo evento com dados:", insertPayload);
         
         const { data, error: insertError } = await supabase
           .from("events")
-          .insert([eventData])
+          // @ts-ignore - Supabase types issue
+          .insert([insertPayload])
           .select()
           .single();
 

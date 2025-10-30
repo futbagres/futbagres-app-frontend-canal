@@ -54,10 +54,11 @@ export default function PerfilPage() {
 
       const { error: updateError } = await supabase
         .from("profiles")
+        // @ts-ignore - Supabase types issue
         .update({
           nome: formData.nome,
           email: formData.email,
-        } as any)
+        })
         .eq("id", user.id);
 
       if (updateError) {

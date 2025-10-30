@@ -57,6 +57,7 @@ export default function EventAnalyticsModal({
       setLoading(true);
       
       // Buscar participantes do evento
+      // @ts-ignore - Supabase types issue
       const { data: participants, error } = await supabase
         .from("event_participants")
         .select("status, payment_status")
@@ -65,23 +66,23 @@ export default function EventAnalyticsModal({
       if (error) throw error;
 
       // Calcular estatísticas
-      const confirmados = participants?.filter(p => p.status === "confirmado").length || 0;
-      const talvez = participants?.filter(p => p.status === "talvez").length || 0;
-      const cancelados = participants?.filter(p => p.status === "cancelado").length || 0;
+      const confirmados = participants?.filter((p: any) => p.status === "confirmado").length || 0;
+      const talvez = participants?.filter((p: any) => p.status === "talvez").length || 0;
+      const cancelados = participants?.filter((p: any) => p.status === "cancelado").length || 0;
       
       // Apenas confirmados contam nas vagas
       const vagasDisponiveis = event.max_participantes - confirmados;
       
       // Calcular valores (apenas confirmados pagos)
       const participantesPagos = participants?.filter(
-        p => p.status === "confirmado" && p.payment_status === "pago"
+        (p: any) => p.status === "confirmado" && p.payment_status === "pago"
       ).length || 0;
       
       const valorArrecadado = participantesPagos * (event.valor_por_pessoa || 0);
       
       // Valor pendente = confirmados que não pagaram
       const participantesPendentes = participants?.filter(
-        p => p.status === "confirmado" && p.payment_status === "pendente"
+        (p: any) => p.status === "confirmado" && p.payment_status === "pendente"
       ).length || 0;
       
       const valorPendente = participantesPendentes * (event.valor_por_pessoa || 0);
