@@ -11,6 +11,14 @@ import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/types/database.types";
+import { 
+  getCurrentLocation, 
+  calculateDistance, 
+  formatDistance, 
+  RADIUS_OPTIONS, 
+  type Coordinates,
+  type RadiusValue 
+} from "@/lib/geolocation";
 
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
@@ -24,6 +32,14 @@ export default function DashboardPage() {
   const [deletingEvent, setDeletingEvent] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "view" | "edit">("create");
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  
+  // Estados para eventos próximos
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const [selectedRadius, setSelectedRadius] = useState<RadiusValue>(10);
+  const [nearbyEvents, setNearbyEvents] = useState<Event[]>([]);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [showNearbyEvents, setShowNearbyEvents] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -64,6 +80,73 @@ export default function DashboardPage() {
       loadMyEvents();
     }
   }, [user]);
+
+  // Carregar eventos próximos quando localização ou raio mudar
+  useEffect(() => {
+    if (userLocation) {
+      loadNearbyEvents();
+    }
+  }, [userLocation, selectedRadius]);
+
+  // Função para solicitar localização do usuário
+  const handleGetLocation = async () => {
+    setLoadingLocation(true);
+    setLocationError(null);
+
+    try {
+      const location = await getCurrentLocation();
+      setUserLocation(location);
+      setShowNearbyEvents(true);
+      console.log("📍 Localização obtida:", location);
+    } catch (error: any) {
+      console.error("❌ Erro ao obter localização:", error);
+      setLocationError(error.message);
+      setUserLocation(null);
+      setShowNearbyEvents(false);
+    } finally {
+      setLoadingLocation(false);
+    }
+  };
+
+  // Função para carregar eventos próximos
+  const loadNearbyEvents = async () => {
+    if (!userLocation) return;
+
+    try {
+      console.log("🔍 Buscando eventos próximos...");
+      
+      // Buscar todos os eventos públicos (exceto os criados pelo usuário)
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .neq("criador_id", user?.id || "")
+        .not("latitude", "is", null)
+        .not("longitude", "is", null)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("❌ Erro ao carregar eventos:", error);
+        throw error;
+      }
+
+      // Filtrar eventos dentro do raio selecionado
+      const eventsWithDistance = (data || [])
+        .map((event: any) => {
+          const distance = calculateDistance(
+            userLocation,
+            { latitude: event.latitude!, longitude: event.longitude! }
+          );
+          return { ...event, distance };
+        })
+        .filter((event: any) => event.distance <= selectedRadius)
+        .sort((a: any, b: any) => a.distance - b.distance);
+
+      console.log(`✅ Encontrados ${eventsWithDistance.length} eventos dentro de ${selectedRadius}km`);
+      setNearbyEvents(eventsWithDistance);
+    } catch (error: any) {
+      console.error("Erro ao buscar eventos próximos:", error.message);
+    }
+  };
 
   // Filtrar eventos baseado no termo de busca
   const filteredEvents = myEvents.filter((event) => {
@@ -202,6 +285,106 @@ export default function DashboardPage() {
 
           {/* Seções de Eventos */}
           <div className="space-y-8">
+            {/* Eventos Próximos a Mim */}
+            <section>
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white mb-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                      📍 Eventos Próximos a Mim
+                    </h2>
+                    <p className="text-blue-100 text-sm">
+                      Descubra eventos de futebol acontecendo perto de você
+                    </p>
+                  </div>
+                  
+                  {!userLocation ? (
+                    <button
+                      onClick={handleGetLocation}
+                      disabled={loadingLocation}
+                      className="px-6 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center whitespace-nowrap"
+                    >
+                      {loadingLocation ? (
+                        <>
+                          <div className="animate-spin h-5 w-5 border-3 border-blue-600 border-t-transparent rounded-full"></div>
+                          Obtendo...
+                        </>
+                      ) : (
+                        <>
+                          🎯 Encontrar Eventos
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <select
+                        value={selectedRadius}
+                        onChange={(e) => setSelectedRadius(Number(e.target.value) as RadiusValue)}
+                        className="px-4 py-2 bg-white text-gray-900 rounded-lg font-semibold focus:ring-2 focus:ring-blue-300"
+                      >
+                        {RADIUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            📏 {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          setUserLocation(null);
+                          setShowNearbyEvents(false);
+                          setNearbyEvents([]);
+                        }}
+                        className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-lg transition-colors"
+                      >
+                        ✕ Limpar
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {locationError && (
+                  <div className="mt-4 p-4 bg-red-500/20 border border-red-300 rounded-lg">
+                    <p className="text-sm">⚠️ {locationError}</p>
+                  </div>
+                )}
+              </div>
+
+              {showNearbyEvents && (
+                <>
+                  {nearbyEvents.length > 0 ? (
+                    <>
+                      <div className="mb-4">
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">
+                          🎯 Encontramos <span className="font-bold text-green-600">{nearbyEvents.length}</span> evento(s) em um raio de <span className="font-bold">{selectedRadius}km</span>
+                        </p>
+                      </div>
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {nearbyEvents.map((event: any) => (
+                          <EventCard
+                            key={event.id}
+                            event={event}
+                            onView={() => handleViewEvent(event)}
+                            showDistance={true}
+                            distance={event.distance}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                      <div className="text-center text-gray-500 dark:text-gray-400">
+                        <div className="text-5xl mb-4">🗺️</div>
+                        <p className="text-lg mb-2">Nenhum evento encontrado por perto</p>
+                        <p className="text-sm">
+                          Tente aumentar o raio de busca ou criar um novo evento na sua região!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+
             {/* Meus Eventos Criados */}
             <section>
               <div className="flex items-center justify-between mb-4">
@@ -353,13 +536,17 @@ function EventCard({
   onView, 
   onEdit,
   onAnalytics,
-  onDelete
+  onDelete,
+  showDistance = false,
+  distance
 }: { 
   event: Event; 
   onView: () => void;
-  onEdit: () => void;
-  onAnalytics: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onAnalytics?: () => void;
+  onDelete?: () => void;
+  showDistance?: boolean;
+  distance?: number;
 }) {
   const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const tipoLabels: Record<string, string> = {
@@ -399,6 +586,11 @@ function EventCard({
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {tipoLabels[event.tipo_futebol] || event.tipo_futebol}
           </span>
+          {showDistance && distance !== undefined && (
+            <div className="mt-1 flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold text-sm">
+              📍 {formatDistance(distance)}
+            </div>
+          )}
         </div>
         <span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold rounded-full">
           {event.status}
@@ -447,36 +639,49 @@ function EventCard({
       )}
 
       <div className="space-y-2">
-        <div className="flex gap-2">
+        {showDistance ? (
+          // Botões para eventos próximos (apenas visualizar)
           <button 
             onClick={onView}
-            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
           >
             Ver Detalhes
           </button>
-          <button 
-            onClick={onEdit}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-semibold"
-          >
-            Editar
-          </button>
-        </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={onAnalytics}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-          >
-            <span>📊</span>
-            Analytics
-          </button>
-          <button 
-            onClick={onDelete}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-            title="Excluir evento"
-          >
-            <span>🗑️</span>
-          </button>
-        </div>
+        ) : (
+          // Botões para meus eventos (com todas as ações)
+          <>
+            <div className="flex gap-2">
+              <button 
+                onClick={onView}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+              >
+                Ver Detalhes
+              </button>
+              <button 
+                onClick={onEdit}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-semibold"
+              >
+                Editar
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={onAnalytics}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+              >
+                <span>📊</span>
+                Analytics
+              </button>
+              <button 
+                onClick={onDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                title="Excluir evento"
+              >
+                <span>🗑️</span>
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
