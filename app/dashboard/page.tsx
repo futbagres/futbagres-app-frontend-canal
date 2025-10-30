@@ -463,7 +463,7 @@ export default function DashboardPage() {
             </section>
 
             {/* Eventos Próximos a Você */}
-            <section>
+            {/* <section>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                 📍 Eventos Próximos a Você
               </h2>
@@ -474,7 +474,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-            </section>
+            </section> */}
 
             {/* Histórico */}
             <section>
