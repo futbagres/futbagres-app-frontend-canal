@@ -97,7 +97,7 @@ export default function CadastroPage() {
                 Criar Conta
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Junte-se à comunidade Futbagres
+                Junte-se à comunidade Futebagres
               </p>
             </div>
 

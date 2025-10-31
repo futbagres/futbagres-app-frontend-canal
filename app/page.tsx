@@ -12,7 +12,7 @@ export default function Home() {
           <div className="mx-auto max-w-7xl">
             <div className="text-center">
               <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-                Bem-vindo ao <span className="text-green-600">Futbagres</span>
+                Bem-vindo ao <span className="text-green-600">Futebagres</span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
                 A plataforma que conecta amantes do futebol para organizar partidas,
@@ -41,12 +41,12 @@ export default function Home() {
         <section id="sobre" className="py-20 px-4 bg-white dark:bg-black">
           <div className="mx-auto max-w-7xl">
             <h2 className="text-4xl font-bold text-center text-gray-900 dark:text-white mb-12">
-              Sobre o Futbagres
+              Sobre o Futebagres
             </h2>
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
                 <p className="text-lg text-gray-700 dark:text-gray-300 mb-6">
-                  O Futbagres nasceu da paixão pelo futebol e da necessidade de
+                  O Futebagres nasceu da paixão pelo futebol e da necessidade de
                   facilitar a organização de partidas entre amigos, colegas e
                   entusiastas do esporte.
                 </p>

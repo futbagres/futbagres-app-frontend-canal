@@ -58,7 +58,7 @@ export default function LoginPage() {
             <div className="text-center mb-8">
               <div className="text-5xl mb-4">⚽</div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Entrar no Futbagres
+                Entrar no Futebagres
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
                 Bem-vindo de volta! Entre com suas credenciais.

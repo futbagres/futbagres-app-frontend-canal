@@ -9,7 +9,7 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="text-2xl">⚽</div>
-              <span className="text-xl font-bold">Futbagres</span>
+              <span className="text-xl font-bold">Futebagres</span>
             </div>
             <p className="text-gray-400 text-sm">
               A plataforma para amantes do futebol se conectarem e jogarem juntos.
@@ -47,8 +47,8 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold mb-4">Contato</h3>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li>contato@futbagres.com</li>
-              <li>© 2025 Futbagres. Todos os direitos reservados.</li>
+              <li>contato@futebagres.com</li>
+              <li>© 2025 Futebagres. Todos os direitos reservados.</li>
             </ul>
           </div>
         </div>

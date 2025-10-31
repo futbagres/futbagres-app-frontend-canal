@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Futbagres - Conectando Amantes do Futebol",
+  title: "Futebagres - Conectando Amantes do Futebol",
   description: "Plataforma para organizar partidas e eventos de futebol. Conecte-se com jogadores, organize eventos e construa uma comunidade apaixonada pelo esporte.",
 };
 

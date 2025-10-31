@@ -73,7 +73,7 @@ export default function LocationSearch({
           }),
         {
           headers: {
-            "User-Agent": "FutbagresApp/1.0", // Necessário para Nominatim
+            "User-Agent": "FutebagresApp/1.0", // Necessário para Nominatim
           },
         }
       );

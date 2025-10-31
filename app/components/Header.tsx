@@ -24,7 +24,7 @@ export default function Header() {
           <Link href="/" className="flex items-center gap-2">
             <div className="text-2xl font-bold text-green-600">⚽</div>
             <span className="text-xl font-bold text-gray-900 dark:text-white">
-              Futbagres
+              Futebagres
             </span>
           </Link>
 
