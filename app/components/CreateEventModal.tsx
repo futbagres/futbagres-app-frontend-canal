@@ -41,6 +41,9 @@ export default function CreateEventModal({
     latitude: null as number | null,
     longitude: null as number | null,
     descricao: "",
+    requer_pagamento: false,
+    sazonalidade_meses: "",
+    data_limite_pagamento: "",
   });
 
   // Preencher formulário quando houver dados do evento
@@ -60,6 +63,9 @@ export default function CreateEventModal({
         latitude: eventData.latitude || null,
         longitude: eventData.longitude || null,
         descricao: eventData.descricao || "",
+        requer_pagamento: eventData.requer_pagamento || false,
+        sazonalidade_meses: eventData.sazonalidade_meses?.toString() || "",
+        data_limite_pagamento: eventData.data_limite_pagamento || "",
       });
     } else if (mode === "create") {
       // Resetar formulário no modo criar
@@ -77,6 +83,9 @@ export default function CreateEventModal({
         latitude: null,
         longitude: null,
         descricao: "",
+        requer_pagamento: false,
+        sazonalidade_meses: "",
+        data_limite_pagamento: "",
       });
     }
     setError(null);
@@ -168,6 +177,9 @@ export default function CreateEventModal({
           descricao: formData.descricao.trim() || null,
           dia_semana: formData.recorrencia === "semanal" ? parseInt(formData.dia_semana) : null,
           criador_id: user.id,
+          requer_pagamento: formData.requer_pagamento,
+          sazonalidade_meses: formData.sazonalidade_meses ? parseInt(formData.sazonalidade_meses) : null,
+          data_limite_pagamento: formData.data_limite_pagamento || null,
         };
         
         console.log("📝 Criando novo evento com dados:", insertPayload);
@@ -203,6 +215,9 @@ export default function CreateEventModal({
         latitude: null,
         longitude: null,
         descricao: "",
+        requer_pagamento: false,
+        sazonalidade_meses: "",
+        data_limite_pagamento: "",
       });
 
       // Callback de sucesso

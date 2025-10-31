@@ -8,6 +8,7 @@ import Footer from "../components/Footer";
 import CreateEventModal from "../components/CreateEventModal";
 import EventAnalyticsModal from "../components/EventAnalyticsModal";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import EventRegistrationModal from "../components/EventRegistrationModal";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/types/database.types";
@@ -40,6 +41,11 @@ export default function DashboardPage() {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showNearbyEvents, setShowNearbyEvents] = useState(false);
+  
+  // Estados para inscrição em eventos
+  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
+  const [eventToRegister, setEventToRegister] = useState<Event | null>(null);
+  const [userParticipations, setUserParticipations] = useState<Map<string, any>>(new Map());
 
   useEffect(() => {
     if (!loading && !user) {
@@ -87,6 +93,38 @@ export default function DashboardPage() {
       loadNearbyEvents();
     }
   }, [userLocation, selectedRadius]);
+
+  // Carregar participações do usuário
+  useEffect(() => {
+    if (user) {
+      loadUserParticipations();
+    }
+  }, [user]);
+
+  const loadUserParticipations = async () => {
+    if (!user) return;
+
+    try {
+      // @ts-ignore
+      const { data, error } = await supabase
+        .from('event_participants')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Erro ao carregar participações:', error);
+        return;
+      }
+
+      const participationsMap = new Map();
+      data?.forEach((p: any) => {
+        participationsMap.set(p.event_id, p);
+      });
+      setUserParticipations(participationsMap);
+    } catch (error) {
+      console.error('Erro ao carregar participações:', error);
+    }
+  };
 
   // Função para solicitar localização do usuário
   const handleGetLocation = async () => {
@@ -214,6 +252,98 @@ export default function DashboardPage() {
       alert('Erro ao excluir evento. Tente novamente.');
     } finally {
       setDeletingEvent(false);
+    }
+  };
+
+  const handleRegisterForEvent = (event: Event) => {
+    setEventToRegister(event);
+    setIsRegistrationModalOpen(true);
+  };
+
+  const confirmRegistration = async () => {
+    if (!eventToRegister || !user || !profile) return;
+
+    try {
+      console.log("📝 Inscrevendo usuário no evento...");
+      
+      // Verificar se já está inscrito
+      // @ts-ignore
+      const { data: existingRegistration, error: checkError } = await supabase
+        .from('event_participants')
+        .select('*')
+        .eq('event_id', eventToRegister.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingRegistration) {
+        alert('Você já está inscrito neste evento!');
+        setIsRegistrationModalOpen(false);
+        return;
+      }
+
+      // Inserir participante com status 'pendente' (aguardando pagamento)
+      // @ts-ignore - Supabase type inference issue
+      const { error: insertError } = await supabase
+        .from('event_participants')
+        // @ts-ignore
+        .insert({
+          event_id: eventToRegister.id,
+          user_id: user.id,
+          status: 'pendente' // Inicia como pendente, muda para confirmado após pagamento
+        });
+
+      if (insertError) {
+        console.error('Erro ao se inscrever:', insertError);
+        alert('Erro ao se inscrever no evento. Tente novamente.');
+        return;
+      }
+
+      alert('✅ Inscrição realizada com sucesso! Status: TALVEZ (aguardando pagamento)');
+      setIsRegistrationModalOpen(false);
+      setEventToRegister(null);
+      
+      // Recarregar participações
+      loadUserParticipations();
+      if (userLocation) {
+        loadNearbyEvents();
+      }
+    } catch (error) {
+      console.error('Erro ao se inscrever:', error);
+      alert('Erro ao se inscrever no evento. Tente novamente.');
+    }
+  };
+
+  const handleCancelRegistration = async (event: Event) => {
+    if (!user) return;
+    
+    if (!confirm(`Deseja realmente cancelar sua inscrição no evento "${event.titulo}"?`)) {
+      return;
+    }
+
+    try {
+      // @ts-ignore
+      const { error } = await supabase
+        .from('event_participants')
+        .delete()
+        .eq('event_id', event.id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Erro ao cancelar inscrição:', error);
+        alert('Erro ao cancelar inscrição. Tente novamente.');
+        return;
+      }
+
+      alert('✅ Inscrição cancelada com sucesso!');
+      
+      // Recarregar participações
+      loadUserParticipations();
+      if (userLocation) {
+        loadNearbyEvents();
+      }
+    } catch (error) {
+      console.error('Erro ao cancelar inscrição:', error);
+      alert('Erro ao cancelar inscrição. Tente novamente.');
     }
   };
 
@@ -359,15 +489,22 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {nearbyEvents.map((event: any) => (
-                          <EventCard
-                            key={event.id}
-                            event={event}
-                            onView={() => handleViewEvent(event)}
-                            showDistance={true}
-                            distance={event.distance}
-                          />
-                        ))}
+                        {nearbyEvents.map((event: any) => {
+                          const participation = userParticipations.get(event.id);
+                          return (
+                            <EventCard
+                              key={event.id}
+                              event={event}
+                              onView={() => handleViewEvent(event)}
+                              onRegister={() => handleRegisterForEvent(event)}
+                              onCancelRegistration={() => handleCancelRegistration(event)}
+                              showDistance={true}
+                              distance={event.distance}
+                              isRegistered={!!participation}
+                              registrationStatus={participation?.status}
+                            />
+                          );
+                        })}
                       </div>
                     </>
                   ) : (
@@ -526,6 +663,19 @@ export default function DashboardPage() {
         eventTitle={selectedEvent?.titulo || ''}
         loading={deletingEvent}
       />
+
+      {/* Modal de Inscrição */}
+      {eventToRegister && (
+        <EventRegistrationModal
+          isOpen={isRegistrationModalOpen}
+          onClose={() => {
+            setIsRegistrationModalOpen(false);
+            setEventToRegister(null);
+          }}
+          onConfirm={confirmRegistration}
+          event={eventToRegister}
+        />
+      )}
     </>
   );
 }
@@ -538,7 +688,11 @@ function EventCard({
   onAnalytics,
   onDelete,
   showDistance = false,
-  distance
+  distance,
+  onRegister,
+  onCancelRegistration,
+  isRegistered = false,
+  registrationStatus
 }: { 
   event: Event; 
   onView: () => void;
@@ -547,6 +701,10 @@ function EventCard({
   onDelete?: () => void;
   showDistance?: boolean;
   distance?: number;
+  onRegister?: () => void;
+  onCancelRegistration?: () => void;
+  isRegistered?: boolean;
+  registrationStatus?: string;
 }) {
   const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const tipoLabels: Record<string, string> = {
@@ -640,13 +798,47 @@ function EventCard({
 
       <div className="space-y-2">
         {showDistance ? (
-          // Botões para eventos próximos (apenas visualizar)
-          <button 
-            onClick={onView}
-            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
-          >
-            Ver Detalhes
-          </button>
+          // Botões para eventos próximos (visualizar e inscrever)
+          <>
+            {isRegistered ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <span className="text-xl">
+                    {registrationStatus === 'confirmado' ? '✅' : '⏳'}
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                      {registrationStatus === 'confirmado' ? 'CONFIRMADO' : 'PENDENTE (Talvez)'}
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      {registrationStatus === 'confirmado' ? 'Pagamento realizado' : 'Aguardando pagamento'}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={onCancelRegistration}
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                >
+                  <span>❌</span>
+                  Cancelar Inscrição
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={onRegister}
+                className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all text-sm font-bold shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+              >
+                <span>✅</span>
+                Inscrever-se no Evento
+              </button>
+            )}
+            <button 
+              onClick={onView}
+              className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-semibold"
+            >
+              Ver Detalhes
+            </button>
+          </>
         ) : (
           // Botões para meus eventos (com todas as ações)
           <>

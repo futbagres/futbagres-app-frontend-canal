@@ -60,32 +60,28 @@ export default function EventAnalyticsModal({
       // @ts-ignore - Supabase types issue
       const { data: participants, error } = await supabase
         .from("event_participants")
-        .select("status, payment_status")
+        .select("status")
         .eq("event_id", event.id);
 
       if (error) throw error;
 
-      // Calcular estatísticas
+      // Calcular estatísticas com nova lógica:
+      // - confirmado = pagamento realizado (✅ CONFIRMADOS)
+      // - pendente = aguardando pagamento (⏳ TALVEZ)
+      // - cancelado = inscrição cancelada (❌ CANCELADOS)
       const confirmados = participants?.filter((p: any) => p.status === "confirmado").length || 0;
-      const talvez = participants?.filter((p: any) => p.status === "talvez").length || 0;
+      const talvez = participants?.filter((p: any) => p.status === "pendente").length || 0;
       const cancelados = participants?.filter((p: any) => p.status === "cancelado").length || 0;
       
       // Apenas confirmados contam nas vagas
       const vagasDisponiveis = event.max_participantes - confirmados;
       
-      // Calcular valores (apenas confirmados pagos)
-      const participantesPagos = participants?.filter(
-        (p: any) => p.status === "confirmado" && p.payment_status === "pago"
-      ).length || 0;
+      // Calcular valores
+      // Confirmados = já pagaram
+      const valorArrecadado = confirmados * (event.valor_por_pessoa || 0);
       
-      const valorArrecadado = participantesPagos * (event.valor_por_pessoa || 0);
-      
-      // Valor pendente = confirmados que não pagaram
-      const participantesPendentes = participants?.filter(
-        (p: any) => p.status === "confirmado" && p.payment_status === "pendente"
-      ).length || 0;
-      
-      const valorPendente = participantesPendentes * (event.valor_por_pessoa || 0);
+      // Pendentes = aguardando pagamento (talvez)
+      const valorPendente = talvez * (event.valor_por_pessoa || 0);
 
       setStats({
         confirmados,
@@ -228,6 +224,9 @@ export default function EventAnalyticsModal({
                   <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     ✅ Confirmados
                   </div>
+                  <div className="text-xs text-green-600 dark:text-green-500 mt-1 font-medium">
+                    Pagamento realizado
+                  </div>
                 </div>
                 
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
@@ -235,7 +234,10 @@ export default function EventAnalyticsModal({
                     {stats.talvez}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    ❓ Talvez
+                    ⏳ Talvez (Pendentes)
+                  </div>
+                  <div className="text-xs text-yellow-600 dark:text-yellow-500 mt-1 font-medium">
+                    Aguardando pagamento
                   </div>
                 </div>
                 
@@ -258,17 +260,81 @@ export default function EventAnalyticsModal({
                 </div>
               </div>
               
-              {/* Barra de progresso */}
-              <div className="mt-4">
+              {/* Barra de progresso segmentada */}
+              <div className="mt-6">
                 <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  <span>Ocupação</span>
-                  <span>{stats.confirmados}/{event.max_participantes}</span>
+                  <span className="font-semibold">Distribuição de Vagas</span>
+                  <span className="font-semibold">{stats.confirmados + stats.talvez}/{event.max_participantes}</span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                  <div 
-                    className="bg-green-600 h-3 rounded-full transition-all"
-                    style={{ width: `${(stats.confirmados / event.max_participantes) * 100}%` }}
-                  ></div>
+                
+                {/* Barra segmentada */}
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-6 overflow-hidden flex">
+                  {/* Confirmados (Verde) */}
+                  {stats.confirmados > 0 && (
+                    <div 
+                      className="bg-green-600 dark:bg-green-500 h-full flex items-center justify-center transition-all relative group"
+                      style={{ width: `${(stats.confirmados / event.max_participantes) * 100}%` }}
+                      title={`${stats.confirmados} confirmados`}
+                    >
+                      {(stats.confirmados / event.max_participantes) * 100 > 8 && (
+                        <span className="text-xs font-bold text-white">
+                          {stats.confirmados}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Pendentes/Talvez (Amarelo) */}
+                  {stats.talvez > 0 && (
+                    <div 
+                      className="bg-yellow-500 dark:bg-yellow-400 h-full flex items-center justify-center transition-all relative group"
+                      style={{ width: `${(stats.talvez / event.max_participantes) * 100}%` }}
+                      title={`${stats.talvez} pendentes`}
+                    >
+                      {(stats.talvez / event.max_participantes) * 100 > 8 && (
+                        <span className="text-xs font-bold text-white">
+                          {stats.talvez}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Vagas Disponíveis (Azul claro) */}
+                  {stats.vagasDisponiveis > 0 && (
+                    <div 
+                      className="bg-blue-400 dark:bg-blue-500 h-full flex items-center justify-center transition-all relative group"
+                      style={{ width: `${(stats.vagasDisponiveis / event.max_participantes) * 100}%` }}
+                      title={`${stats.vagasDisponiveis} vagas disponíveis`}
+                    >
+                      {(stats.vagasDisponiveis / event.max_participantes) * 100 > 8 && (
+                        <span className="text-xs font-bold text-white">
+                          {stats.vagasDisponiveis}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Legenda */}
+                <div className="flex flex-wrap gap-4 mt-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-600 rounded"></div>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Confirmados: {stats.confirmados}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Pendentes: {stats.talvez}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-400 rounded"></div>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Disponíveis: {stats.vagasDisponiveis}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
