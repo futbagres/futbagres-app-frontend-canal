@@ -5,13 +5,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import FloatingNotificationButton from "../components/FloatingNotificationButton";
 import CreateEventModal from "../components/CreateEventModal";
 import EventAnalyticsModal from "../components/EventAnalyticsModal";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import EventRegistrationModal from "../components/EventRegistrationModal";
+import PaymentModal from "../components/PaymentModal";
+import PresenceButtons from "../components/PresenceButtons";
+import ParticipantsListModal from "../components/ParticipantsListModal";
+import EventPaymentsPanel from "../components/EventPaymentsPanel";
+import GameDayModal from "../components/GameDayModal";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import type { Event } from "@/types/database.types";
+import type { Event, Profile } from "@/types/database.types";
 import { 
   getCurrentLocation, 
   calculateDistance, 
@@ -46,6 +52,19 @@ export default function DashboardPage() {
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
   const [eventToRegister, setEventToRegister] = useState<Event | null>(null);
   const [userParticipations, setUserParticipations] = useState<Map<string, any>>(new Map());
+  const [myRegisteredEvents, setMyRegisteredEvents] = useState<Event[]>([]);
+  const [loadingRegisteredEvents, setLoadingRegisteredEvents] = useState(false);
+  
+  // Estados para sistema de pagamento
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [participantsModalOpen, setParticipantsModalOpen] = useState(false);
+  const [paymentsAdminOpen, setPaymentsAdminOpen] = useState(false);
+  const [selectedEventForPayment, setSelectedEventForPayment] = useState<Event | null>(null);
+  const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Profile>>(new Map());
+  
+  // Estados para dia do jogo
+  const [gameDayModalOpen, setGameDayModalOpen] = useState(false);
+  const [selectedEventForGameDay, setSelectedEventForGameDay] = useState<Event | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -98,8 +117,36 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user) {
       loadUserParticipations();
+      loadMyRegisteredEvents();
     }
   }, [user]);
+
+  // Carregar perfis dos criadores quando eventos mudarem
+  useEffect(() => {
+    loadCreatorProfiles();
+  }, [nearbyEvents]);
+
+  const loadCreatorProfiles = async () => {
+    try {
+      const creatorIds = [...new Set(nearbyEvents.map(e => e.criador_id))];
+      if (creatorIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', creatorIds);
+
+      if (error) throw error;
+
+      const profilesMap = new Map();
+      data?.forEach((p: any) => {
+        profilesMap.set(p.id, p as Profile);
+      });
+      setCreatorProfiles(profilesMap);
+    } catch (error) {
+      console.error('Erro ao carregar perfis dos criadores:', error);
+    }
+  };
 
   const loadUserParticipations = async () => {
     if (!user) return;
@@ -123,6 +170,67 @@ export default function DashboardPage() {
       setUserParticipations(participationsMap);
     } catch (error) {
       console.error('Erro ao carregar participações:', error);
+    }
+  };
+
+  // Carregar eventos em que o usuário está inscrito
+  const loadMyRegisteredEvents = async () => {
+    if (!user) return;
+
+    setLoadingRegisteredEvents(true);
+    try {
+      // Buscar IDs dos eventos em que o usuário está inscrito
+      // @ts-ignore
+      const { data: participations, error: participationsError } = await supabase
+        .from('event_participants')
+        .select('event_id')
+        .eq('user_id', user.id);
+
+      if (participationsError) {
+        console.error('Erro ao carregar participações:', participationsError);
+        return;
+      }
+
+      if (!participations || participations.length === 0) {
+        setMyRegisteredEvents([]);
+        return;
+      }
+
+      const eventIds = participations.map((p: any) => p.event_id);
+
+      // Buscar os eventos completos
+      const { data: events, error: eventsError } = await supabase
+        .from('events')
+        .select('*')
+        .in('id', eventIds);
+
+      if (eventsError) {
+        console.error('Erro ao carregar eventos inscritos:', eventsError);
+        return;
+      }
+
+      setMyRegisteredEvents(events || []);
+
+      // Carregar perfis dos criadores desses eventos
+      const creatorIds = [...new Set((events || []).map((e: any) => e.criador_id))];
+      if (creatorIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', creatorIds);
+
+        if (!profilesError && profiles) {
+          const profilesMap = new Map(creatorProfiles);
+          profiles.forEach((p: any) => {
+            profilesMap.set(p.id, p as Profile);
+          });
+          setCreatorProfiles(profilesMap);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar eventos inscritos:', error);
+    } finally {
+      setLoadingRegisteredEvents(false);
     }
   };
 
@@ -186,19 +294,30 @@ export default function DashboardPage() {
     }
   };
 
-  // Filtrar eventos baseado no termo de busca
+  // Filtrar eventos com base na busca (incluindo eventos próximos e inscritos)
   const filteredEvents = myEvents.filter((event) => {
-    if (!searchTerm.trim()) return true;
-    
-    const search = searchTerm.toLowerCase();
-    return (
-      event.titulo.toLowerCase().includes(search) ||
-      event.id.toLowerCase().includes(search) ||
-      event.local?.toLowerCase().includes(search)
-    );
+    const matchesSearch = searchTerm === '' || 
+      event.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.id.toString().includes(searchTerm);
+    return matchesSearch;
   });
 
-  const handleCreateEvent = () => {
+  const filteredNearbyEvents = nearbyEvents.filter((event) => {
+    const matchesSearch = searchTerm === '' || 
+      event.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.id.toString().includes(searchTerm);
+    return matchesSearch;
+  });
+
+  const filteredRegisteredEvents = myRegisteredEvents.filter((event) => {
+    const matchesSearch = searchTerm === '' || 
+      event.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.id.toString().includes(searchTerm);
+    return matchesSearch;
+  });  const handleCreateEvent = () => {
     setModalMode("create");
     setSelectedEvent(null);
     setIsModalOpen(true);
@@ -302,8 +421,9 @@ export default function DashboardPage() {
       setIsRegistrationModalOpen(false);
       setEventToRegister(null);
       
-      // Recarregar participações
+      // Recarregar participações e eventos inscritos
       loadUserParticipations();
+      loadMyRegisteredEvents();
       if (userLocation) {
         loadNearbyEvents();
       }
@@ -336,15 +456,31 @@ export default function DashboardPage() {
 
       alert('✅ Inscrição cancelada com sucesso!');
       
-      // Recarregar participações
-      loadUserParticipations();
+      // Recarregar participações e eventos inscritos
+      await loadUserParticipations();
+      await loadMyRegisteredEvents();
       if (userLocation) {
-        loadNearbyEvents();
+        await loadNearbyEvents();
       }
     } catch (error) {
       console.error('Erro ao cancelar inscrição:', error);
       alert('Erro ao cancelar inscrição. Tente novamente.');
     }
+  };
+
+  const handleOpenPaymentModal = (event: Event) => {
+    setSelectedEventForPayment(event);
+    setPaymentModalOpen(true);
+  };
+
+  const handleOpenParticipantsModal = (event: Event) => {
+    setSelectedEventForPayment(event);
+    setParticipantsModalOpen(true);
+  };
+
+  const handleOpenPaymentsAdminPanel = (event: Event) => {
+    setSelectedEventForPayment(event);
+    setPaymentsAdminOpen(true);
   };
 
   if (loading) {
@@ -369,6 +505,7 @@ export default function DashboardPage() {
   return (
     <>
       <Header />
+      <FloatingNotificationButton userId={user.id} />
       <main className="min-h-screen pt-24 pb-12 px-4 bg-gray-50 dark:bg-gray-900">
         <div className="mx-auto max-w-7xl">
           {/* Cabeçalho */}
@@ -481,16 +618,17 @@ export default function DashboardPage() {
 
               {showNearbyEvents && (
                 <>
-                  {nearbyEvents.length > 0 ? (
+                  {filteredNearbyEvents.length > 0 ? (
                     <>
                       <div className="mb-4">
                         <p className="text-gray-600 dark:text-gray-400 text-sm">
-                          🎯 Encontramos <span className="font-bold text-green-600">{nearbyEvents.length}</span> evento(s) em um raio de <span className="font-bold">{selectedRadius}km</span>
+                          🎯 Encontramos <span className="font-bold text-green-600">{filteredNearbyEvents.length}</span> evento(s) em um raio de <span className="font-bold">{selectedRadius}km</span>
                         </p>
                       </div>
                       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {nearbyEvents.map((event: any) => {
+                        {filteredNearbyEvents.map((event: any) => {
                           const participation = userParticipations.get(event.id);
+                          const creatorProfile = creatorProfiles.get(event.criador_id);
                           return (
                             <EventCard
                               key={event.id}
@@ -498,10 +636,15 @@ export default function DashboardPage() {
                               onView={() => handleViewEvent(event)}
                               onRegister={() => handleRegisterForEvent(event)}
                               onCancelRegistration={() => handleCancelRegistration(event)}
+                              onPayment={() => handleOpenPaymentModal(event)}
+                              onViewParticipants={() => handleOpenParticipantsModal(event)}
                               showDistance={true}
                               distance={event.distance}
                               isRegistered={!!participation}
                               registrationStatus={participation?.status}
+                              participation={participation}
+                              currentUserId={user?.id}
+                              creatorProfile={creatorProfile}
                             />
                           );
                         })}
@@ -519,6 +662,60 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </>
+              )}
+            </section>
+
+            {/* Meus Eventos Inscritos */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  🎫 Meus Eventos Inscritos
+                </h2>
+              </div>
+              
+              {loadingRegisteredEvents ? (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <div className="animate-spin h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-lg">Carregando seus eventos inscritos...</p>
+                  </div>
+                </div>
+              ) : filteredRegisteredEvents.length === 0 ? (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <div className="text-5xl mb-4">🎫</div>
+                    <p className="text-lg mb-2">Você ainda não está inscrito em nenhum evento</p>
+                    <p className="text-sm">Use "Eventos Próximos a Mim" para encontrar e se inscrever!</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredRegisteredEvents.map((event: any) => {
+                    const participation = userParticipations.get(event.id);
+                    const creatorProfile = creatorProfiles.get(event.criador_id);
+                    const isCreator = event.criador_id === user?.id;
+                    return (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        onView={() => handleViewEvent(event)}
+                        onEdit={isCreator ? () => handleEditEvent(event) : undefined}
+                        onAnalytics={isCreator ? () => handleViewAnalytics(event) : undefined}
+                        onDelete={isCreator ? () => handleDeleteEvent(event) : undefined}
+                        onRegister={!isCreator ? () => handleRegisterForEvent(event) : undefined}
+                        onCancelRegistration={!isCreator ? () => handleCancelRegistration(event) : undefined}
+                        onPayment={!isCreator ? () => handleOpenPaymentModal(event) : undefined}
+                        onViewParticipants={() => handleOpenParticipantsModal(event)}
+                        showDistance={false}
+                        isRegistered={!isCreator}
+                        registrationStatus={participation?.status}
+                        participation={participation}
+                        currentUserId={user?.id}
+                        creatorProfile={creatorProfile}
+                      />
+                    );
+                  })}
+                </div>
               )}
             </section>
 
@@ -550,6 +747,10 @@ export default function DashboardPage() {
                       onEdit={() => handleEditEvent(event)}
                       onAnalytics={() => handleViewAnalytics(event)}
                       onDelete={() => handleDeleteEvent(event)}
+                      onGameDay={() => {
+                        setSelectedEventForGameDay(event);
+                        setGameDayModalOpen(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -676,8 +877,118 @@ export default function DashboardPage() {
           event={eventToRegister}
         />
       )}
+
+      {/* Modal de Pagamento */}
+      {paymentModalOpen && selectedEventForPayment && user && (
+        (() => {
+          const participation = userParticipations.get(selectedEventForPayment.id);
+          const creatorProfile = creatorProfiles.get(selectedEventForPayment.criador_id);
+          
+          if (!participation || !creatorProfile) return null;
+          
+          return (
+            <PaymentModal
+              isOpen={paymentModalOpen}
+              onClose={() => {
+                setPaymentModalOpen(false);
+                setSelectedEventForPayment(null);
+              }}
+              event={selectedEventForPayment}
+              participant={participation}
+              criadorProfile={creatorProfile}
+              onPaymentSubmitted={async () => {
+                await loadUserParticipations();
+                if (userLocation) {
+                  await loadNearbyEvents();
+                }
+              }}
+            />
+          );
+        })()
+      )}
+
+      {/* Modal de Participantes */}
+      {participantsModalOpen && selectedEventForPayment && user && (
+        <ParticipantsListModal
+          isOpen={participantsModalOpen}
+          onClose={() => {
+            setParticipantsModalOpen(false);
+            setSelectedEventForPayment(null);
+          }}
+          eventId={selectedEventForPayment.id}
+          isAdmin={selectedEventForPayment.criador_id === user.id}
+        />
+      )}
+
+      {/* Painel Admin de Pagamentos */}
+      {paymentsAdminOpen && selectedEventForPayment && user && (
+        <EventPaymentsPanel
+          isOpen={paymentsAdminOpen}
+          onClose={() => {
+            setPaymentsAdminOpen(false);
+            setSelectedEventForPayment(null);
+          }}
+          eventId={selectedEventForPayment.id}
+          onPaymentUpdated={async () => {
+            await loadUserParticipations();
+            if (userLocation) {
+              await loadNearbyEvents();
+            }
+          }}
+        />
+      )}
+
+      {/* Modal Dia de Jogo */}
+      {gameDayModalOpen && selectedEventForGameDay && (
+        <GameDayModal
+          isOpen={gameDayModalOpen}
+          onClose={() => {
+            setGameDayModalOpen(false);
+            setSelectedEventForGameDay(null);
+          }}
+          event={selectedEventForGameDay}
+          onTeamsGenerated={async () => {
+            // Recarregar eventos após gerar times
+            await loadMyEvents();
+          }}
+        />
+      )}
     </>
   );
+}
+
+// Função para verificar se o evento está a 24h de começar
+function isWithin24Hours(event: Event): boolean {
+  const now = new Date();
+  
+  let eventDateTime: Date;
+  
+  if (event.recorrencia === "unico" && event.data_evento) {
+    // Evento único - usar data_evento
+    const [year, month, day] = event.data_evento.split("-").map(Number);
+    const [hour, minute] = event.horario_inicio.split(":").map(Number);
+    eventDateTime = new Date(year, month - 1, day, hour, minute);
+  } else if (event.recorrencia === "semanal" && event.dia_semana !== null) {
+    // Evento semanal - calcular próxima ocorrência
+    const dayOfWeek = event.dia_semana;
+    const [hour, minute] = event.horario_inicio.split(":").map(Number);
+    
+    // Encontrar próxima ocorrência do dia da semana
+    let daysUntilEvent = dayOfWeek - now.getDay();
+    if (daysUntilEvent < 0) daysUntilEvent += 7;
+    if (daysUntilEvent === 0 && now.getHours() > hour) daysUntilEvent = 7;
+    
+    eventDateTime = new Date(now);
+    eventDateTime.setDate(now.getDate() + daysUntilEvent);
+    eventDateTime.setHours(hour, minute, 0, 0);
+  } else {
+    return false;
+  }
+  
+  const diffMs = eventDateTime.getTime() - now.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  return diffHours > 0 && diffHours <= 24;
 }
 
 // Componente para exibir evento real
@@ -687,24 +998,36 @@ function EventCard({
   onEdit,
   onAnalytics,
   onDelete,
+  onGameDay,
   showDistance = false,
   distance,
   onRegister,
   onCancelRegistration,
+  onPayment,
+  onViewParticipants,
   isRegistered = false,
-  registrationStatus
+  registrationStatus,
+  participation,
+  currentUserId,
+  creatorProfile
 }: { 
   event: Event; 
   onView: () => void;
   onEdit?: () => void;
   onAnalytics?: () => void;
   onDelete?: () => void;
+  onGameDay?: () => void;
   showDistance?: boolean;
   distance?: number;
   onRegister?: () => void;
   onCancelRegistration?: () => void;
+  onPayment?: () => void;
+  onViewParticipants?: () => void;
   isRegistered?: boolean;
   registrationStatus?: string;
+  participation?: any;
+  currentUserId?: string;
+  creatorProfile?: Profile;
 }) {
   const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const tipoLabels: Record<string, string> = {
@@ -712,6 +1035,8 @@ function EventCard({
     salao: "🏟️ Salão", 
     society: "👥 Society"
   };
+  
+  const showGameDayButton = onGameDay && isWithin24Hours(event);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border-l-4 border-green-600">
@@ -815,6 +1140,41 @@ function EventCard({
                     </p>
                   </div>
                 </div>
+                
+                {/* Botão de Pagamento se status pendente e evento pago (valor > 0) */}
+                {registrationStatus === 'pendente' && event.valor_por_pessoa > 0 && onPayment && (
+                  <button 
+                    onClick={onPayment}
+                    className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                  >
+                    <span>💳</span>
+                    Pagar Evento (R$ {event.valor_por_pessoa.toFixed(2)})
+                  </button>
+                )}
+
+                {/* Botões de Presença se status confirmado */}
+                {registrationStatus === 'confirmado' && participation && currentUserId && (
+                  <PresenceButtons
+                    eventId={event.id}
+                    userId={currentUserId}
+                    participant={participation}
+                    onStatusChange={() => {
+                      // Callback vazio por enquanto
+                    }}
+                  />
+                )}
+
+                {/* Botão Ver Participantes */}
+                {onViewParticipants && (
+                  <button 
+                    onClick={onViewParticipants}
+                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                  >
+                    <span>👥</span>
+                    Ver Participantes
+                  </button>
+                )}
+
                 <button 
                   onClick={onCancelRegistration}
                   className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
@@ -824,13 +1184,24 @@ function EventCard({
                 </button>
               </div>
             ) : (
-              <button 
-                onClick={onRegister}
-                className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all text-sm font-bold shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-              >
-                <span>✅</span>
-                Inscrever-se no Evento
-              </button>
+              <>
+                <button 
+                  onClick={onRegister}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all text-sm font-bold shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                >
+                  <span>✅</span>
+                  Inscrever-se no Evento
+                </button>
+                {onViewParticipants && (
+                  <button 
+                    onClick={onViewParticipants}
+                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                  >
+                    <span>👥</span>
+                    Ver Participantes
+                  </button>
+                )}
+              </>
             )}
             <button 
               onClick={onView}
@@ -840,38 +1211,146 @@ function EventCard({
             </button>
           </>
         ) : (
-          // Botões para meus eventos (com todas as ações)
+          // Botões para eventos inscritos ou criados (diferenciados por props)
           <>
-            <div className="flex gap-2">
-              <button 
-                onClick={onView}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
-              >
-                Ver Detalhes
-              </button>
-              <button 
-                onClick={onEdit}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-semibold"
-              >
-                Editar
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={onAnalytics}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-              >
-                <span>📊</span>
-                Analytics
-              </button>
-              <button 
-                onClick={onDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-                title="Excluir evento"
-              >
-                <span>🗑️</span>
-              </button>
-            </div>
+            {onEdit || onAnalytics || onDelete ? (
+              // Botões de Admin (evento criado pelo usuário)
+              <>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={onView}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+                  >
+                    Ver Detalhes
+                  </button>
+                  {onEdit && (
+                    <button 
+                      onClick={onEdit}
+                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-semibold"
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {onAnalytics && (
+                    <button 
+                      onClick={onAnalytics}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                    >
+                      <span>📊</span>
+                      Analytics
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button 
+                      onClick={onDelete}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                      title="Excluir evento"
+                    >
+                      <span>🗑️</span>
+                    </button>
+                  )}
+                </div>
+                
+                {/* Botão DIA DE JOGO - Aparece 24h antes do evento */}
+                {showGameDayButton && (
+                  <button 
+                    onClick={onGameDay}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all text-sm font-bold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 animate-pulse"
+                  >
+                    <span className="text-xl">🏆</span>
+                    DIA DE JOGO
+                  </button>
+                )}
+              </>
+            ) : (
+              // Botões de Participante (evento inscrito)
+              <div className="space-y-2">
+                {isRegistered ? (
+                  <>
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                      <span className="text-xl">
+                        {registrationStatus === 'confirmado' ? '✅' : '⏳'}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                          {registrationStatus === 'confirmado' ? 'CONFIRMADO' : 'PENDENTE (Talvez)'}
+                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          {registrationStatus === 'confirmado' ? 'Pagamento realizado' : 'Aguardando pagamento'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Botão de Pagamento se status pendente e evento pago (valor > 0) */}
+                    {registrationStatus === 'pendente' && event.valor_por_pessoa > 0 && onPayment ? (
+                      <button 
+                        onClick={onPayment}
+                        className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                      >
+                        <span>💳</span>
+                        Pagar Evento (R$ {event.valor_por_pessoa.toFixed(2)})
+                      </button>
+                    ) : registrationStatus === 'pendente' && event.valor_por_pessoa === 0 && (
+                      <div className="w-full px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700 text-center">
+                        <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                          ℹ️ Evento gratuito - Sem necessidade de pagamento
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Botões de Presença se status confirmado */}
+                    {registrationStatus === 'confirmado' && participation && currentUserId && (
+                      <PresenceButtons
+                        eventId={event.id}
+                        userId={currentUserId}
+                        participant={participation}
+                        onStatusChange={() => {
+                          // Callback vazio por enquanto
+                        }}
+                      />
+                    )}
+
+                    {/* Botões de ação */}
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={onView}
+                        className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-semibold"
+                      >
+                        Ver Detalhes
+                      </button>
+                      {onViewParticipants && (
+                        <button 
+                          onClick={onViewParticipants}
+                          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                        >
+                          <span>👥</span>
+                          Participantes
+                        </button>
+                      )}
+                    </div>
+
+                    {onCancelRegistration && (
+                      <button 
+                        onClick={onCancelRegistration}
+                        className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                      >
+                        <span>❌</span>
+                        Cancelar Inscrição
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <button 
+                    onClick={onView}
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+                  >
+                    Ver Detalhes
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
