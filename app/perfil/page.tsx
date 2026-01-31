@@ -8,6 +8,7 @@ import FloatingNotificationButton from "../components/FloatingNotificationButton
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import StarRating from "../components/StarRating";
+import AvatarUpload from "../../components/AvatarUpload";
 import type { PlayerPosition, PlayerEvaluation } from "@/types/database.types";
 
 interface BagreScoreStats {
@@ -33,6 +34,7 @@ export default function PerfilPage() {
     email: "",
     posicao: "" as PlayerPosition | "",
     chave_pix: "",
+    avatar_url: "",
     auto_defesa: 3,
     auto_velocidade: 3,
     auto_passe: 3,
@@ -59,6 +61,7 @@ export default function PerfilPage() {
         email: profile.email || "",
         posicao: (profile.posicao as PlayerPosition) || "",
         chave_pix: profile.chave_pix || "",
+        avatar_url: profile.avatar_url || "",
         auto_defesa: profile.auto_defesa || 3,
         auto_velocidade: profile.auto_velocidade || 3,
         auto_passe: profile.auto_passe || 3,
@@ -168,6 +171,12 @@ export default function PerfilPage() {
     if (success) setSuccess(false);
   };
 
+  const handleAvatarUpdate = (url: string | null) => {
+    setFormData(prev => ({ ...prev, avatar_url: url || "" }));
+    // Recarregar o perfil para refletir as mudanças
+    refreshProfile();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -248,10 +257,12 @@ export default function PerfilPage() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
             {/* Cabeçalho */}
             <div className="text-center mb-8">
-              <div className="w-24 h-24 bg-green-600 rounded-full flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4">
-                {profile?.nome?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "?"}
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <AvatarUpload
+                user={user}
+                currentAvatarUrl={profile?.avatar_url || null}
+                onAvatarUpdate={handleAvatarUpdate}
+              />
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 mt-4">
                 Meu Perfil
               </h1>
               <p className="text-gray-600 dark:text-gray-400">

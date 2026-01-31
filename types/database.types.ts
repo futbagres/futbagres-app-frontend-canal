@@ -6,6 +6,7 @@ export interface Profile {
   email: string;
   nome: string;
   role: UserRole;
+  avatar_url: string | null;
   // Dados do jogador
   posicao: PlayerPosition | null;
   // Autoavaliação (0.5 a 5.0)
@@ -105,7 +106,8 @@ export type NotificationType =
   | 'event_updated' 
   | 'event_cancelled' 
   | 'participant_joined'
-  | 'teams_generated';
+  | 'teams_generated'
+  | 'new_follower';
 
 export interface Notification {
   id: string;
@@ -140,6 +142,15 @@ export interface GameDayTeamPlayer {
   created_at: string;
 }
 
+export interface Friendship {
+  id: string;
+  follower_id: string;
+  following_id: string;
+  status: 'active' | 'blocked';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -172,6 +183,11 @@ export interface Database {
         Row: Notification;
         Insert: Omit<Notification, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Notification, 'id' | 'user_id' | 'created_at' | 'updated_at'>>;
+      };
+      friendships: {
+        Row: Friendship;
+        Insert: Omit<Friendship, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Friendship, 'id' | 'follower_id' | 'following_id' | 'created_at' | 'updated_at'>>;
       };
       game_day_teams: {
         Row: GameDayTeam;

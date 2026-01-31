@@ -21,7 +21,7 @@ export default function Header() {
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
             <div className="text-2xl font-bold text-green-600">⚽</div>
             <span className="text-xl font-bold text-gray-900 dark:text-white">
               Futebagres
@@ -37,6 +37,12 @@ export default function Header() {
                   className="text-gray-700 hover:text-green-600 transition-colors dark:text-gray-300 dark:hover:text-green-400"
                 >
                   Dashboard
+                </Link>
+                <Link
+                  href="/amigos"
+                  className="text-gray-700 hover:text-green-600 transition-colors dark:text-gray-300 dark:hover:text-green-400"
+                >
+                  Amigos
                 </Link>
                 <Link
                   href="/perfil"
@@ -116,6 +122,13 @@ export default function Header() {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Dashboard
+                </Link>
+                <Link
+                  href="/amigos"
+                  className="block text-gray-700 hover:text-green-600 transition-colors dark:text-gray-300"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Amigos
                 </Link>
                 <Link
                   href="/perfil"
