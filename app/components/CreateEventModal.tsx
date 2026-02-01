@@ -34,6 +34,8 @@ export default function CreateEventModal({
     recorrencia: "unico",
     dia_semana: "",
     data_evento: "",
+    data_inicio: "",
+    data_fim: "",
     horario_inicio: "",
     horario_fim: "",
     valor_por_pessoa: "0",
@@ -56,6 +58,8 @@ export default function CreateEventModal({
         recorrencia: eventData.recorrencia || "unico",
         dia_semana: eventData.dia_semana !== null ? eventData.dia_semana.toString() : "",
         data_evento: eventData.data_evento || "",
+        data_inicio: eventData.data_inicio || "",
+        data_fim: eventData.data_fim || "",
         horario_inicio: eventData.horario_inicio || "",
         horario_fim: eventData.horario_fim || "",
         valor_por_pessoa: eventData.valor_por_pessoa?.toString() || "0",
@@ -75,8 +79,8 @@ export default function CreateEventModal({
         max_participantes: 22,
         recorrencia: "unico",
         dia_semana: "",
-        data_evento: "",
-        horario_inicio: "",
+        data_evento: "",        data_inicio: "",
+        data_fim: "",        horario_inicio: "",
         horario_fim: "",
         valor_por_pessoa: "0",
         local: "",
@@ -97,6 +101,15 @@ export default function CreateEventModal({
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
     if (error) setError(null);
+
+    // Se mudou a data de início, calcular automaticamente a data fim (3 semanas à frente)
+    if (name === "data_inicio" && value && formData.recorrencia === "mensal") {
+      const startDate = new Date(value);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 21); // 3 semanas = 21 dias
+      const endDateString = endDate.toISOString().split('T')[0];
+      setFormData(prev => ({ ...prev, data_fim: endDateString }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,8 +135,8 @@ export default function CreateEventModal({
         throw new Error("Data do evento é obrigatória para eventos únicos");
       }
 
-      if (formData.recorrencia === "semanal" && !formData.dia_semana) {
-        throw new Error("Dia da semana é obrigatório para eventos semanais");
+      if (formData.recorrencia === "mensal" && (!formData.data_inicio || !formData.data_fim)) {
+        throw new Error("Datas de início e fim são obrigatórias para eventos mensais");
       }
 
       if (mode === "edit" && eventData) {
@@ -134,8 +147,10 @@ export default function CreateEventModal({
           titulo: formData.titulo.trim(),
           tipo_futebol: formData.tipo_futebol as "campo" | "salao" | "society",
           max_participantes: parseInt(formData.max_participantes.toString()),
-          recorrencia: formData.recorrencia as "unico" | "semanal",
+          recorrencia: formData.recorrencia as "unico" | "mensal",
           data_evento: formData.recorrencia === "unico" ? formData.data_evento || null : null,
+          data_inicio: formData.recorrencia === "mensal" ? formData.data_inicio || null : null,
+          data_fim: formData.recorrencia === "mensal" ? formData.data_fim || null : null,
           horario_inicio: formData.horario_inicio,
           horario_fim: formData.horario_fim,
           valor_por_pessoa: parseFloat(formData.valor_por_pessoa),
@@ -143,7 +158,7 @@ export default function CreateEventModal({
           latitude: formData.latitude,
           longitude: formData.longitude,
           descricao: formData.descricao.trim() || null,
-          dia_semana: formData.recorrencia === "semanal" ? parseInt(formData.dia_semana) : null,
+          dia_semana: null, // Não usado mais para mensal
         };
         
         const { data, error: updateError } = await supabase
@@ -166,8 +181,10 @@ export default function CreateEventModal({
           titulo: formData.titulo.trim(),
           tipo_futebol: formData.tipo_futebol as "campo" | "salao" | "society",
           max_participantes: parseInt(formData.max_participantes.toString()),
-          recorrencia: formData.recorrencia as "unico" | "semanal",
+          recorrencia: formData.recorrencia as "unico" | "mensal",
           data_evento: formData.recorrencia === "unico" ? formData.data_evento || null : null,
+          data_inicio: formData.recorrencia === "mensal" ? formData.data_inicio || null : null,
+          data_fim: formData.recorrencia === "mensal" ? formData.data_fim || null : null,
           horario_inicio: formData.horario_inicio,
           horario_fim: formData.horario_fim,
           valor_por_pessoa: parseFloat(formData.valor_por_pessoa),
@@ -175,7 +192,7 @@ export default function CreateEventModal({
           latitude: formData.latitude,
           longitude: formData.longitude,
           descricao: formData.descricao.trim() || null,
-          dia_semana: formData.recorrencia === "semanal" ? parseInt(formData.dia_semana) : null,
+          dia_semana: null, // Não usado mais para mensal
           criador_id: user.id,
           requer_pagamento: formData.requer_pagamento,
           sazonalidade_meses: formData.sazonalidade_meses ? parseInt(formData.sazonalidade_meses) : null,
@@ -208,6 +225,8 @@ export default function CreateEventModal({
         recorrencia: "unico",
         dia_semana: "",
         data_evento: "",
+        data_inicio: "",
+        data_fim: "",
         horario_inicio: "",
         horario_fim: "",
         valor_por_pessoa: "0",
@@ -260,6 +279,7 @@ export default function CreateEventModal({
             latitude={formData.latitude}
             longitude={formData.longitude}
             eventTitle={formData.titulo}
+            eventDate={formData.recorrencia === "unico" ? formData.data_evento : formData.data_inicio}
           />
         )}
 
@@ -356,7 +376,7 @@ export default function CreateEventModal({
             required={!isReadOnly}
           >
             <option value="unico">Evento Único</option>
-            <option value="semanal">Evento Semanal</option>
+            <option value="mensal">Evento Mensal</option>
           </select>
         </div>
 
@@ -384,31 +404,52 @@ export default function CreateEventModal({
           </div>
         )}
 
-        {/* Dia da Semana (se semanal) */}
-        {formData.recorrencia === "semanal" && (
-          <div>
-            <label
-              htmlFor="dia_semana"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              Dia da Semana *
-            </label>
-            <select
-              id="dia_semana"
-              name="dia_semana"
-              value={formData.dia_semana}
-              onChange={handleChange}
-              disabled={isReadOnly}
-              className={`w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
-              required={!isReadOnly}
-            >
-              <option value="">Selecione um dia</option>
-              {diasSemana.map((dia) => (
-                <option key={dia.value} value={dia.value}>
-                  {dia.label}
-                </option>
-              ))}
-            </select>
+        {/* Datas do Evento Mensal */}
+        {formData.recorrencia === "mensal" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="data_inicio"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Data de Início *
+              </label>
+              <input
+                type="date"
+                id="data_inicio"
+                name="data_inicio"
+                value={formData.data_inicio}
+                onChange={handleChange}
+                readOnly={isReadOnly}
+                disabled={isReadOnly}
+                min={new Date().toISOString().split('T')[0]}
+                className={`w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
+                required={!isReadOnly}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="data_fim"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Data de Fim *
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                  (3 semanas sugeridas)
+                </span>
+              </label>
+              <input
+                type="date"
+                id="data_fim"
+                name="data_fim"
+                value={formData.data_fim}
+                onChange={handleChange}
+                readOnly={isReadOnly}
+                disabled={isReadOnly}
+                min={formData.data_inicio || new Date().toISOString().split('T')[0]}
+                className={`w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
+                required={!isReadOnly}
+              />
+            </div>
           </div>
         )}
 

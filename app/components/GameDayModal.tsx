@@ -330,18 +330,10 @@ export default function GameDayModal({
       let eventDate: string;
       if (event.recorrencia === "unico" && event.data_evento) {
         eventDate = event.data_evento;
+      } else if (event.recorrencia === "mensal" && event.data_inicio) {
+        eventDate = event.data_inicio;
       } else {
-        // Para eventos semanais, usar próxima ocorrência
-        const now = new Date();
-        const dayOfWeek = event.dia_semana!;
-        let daysUntilEvent = dayOfWeek - now.getDay();
-        if (daysUntilEvent < 0) daysUntilEvent += 7;
-        if (daysUntilEvent === 0 && now.getHours() > parseInt(event.horario_inicio.split(':')[0])) {
-          daysUntilEvent = 7;
-        }
-        const eventDateTime = new Date(now);
-        eventDateTime.setDate(now.getDate() + daysUntilEvent);
-        eventDate = eventDateTime.toISOString().split('T')[0];
+        throw new Error("Não foi possível determinar a data do evento");
       }
 
       // Deletar times anteriores se existirem

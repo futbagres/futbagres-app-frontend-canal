@@ -107,6 +107,7 @@ export default function PaymentModal({
           metodo_pagamento: metodoPagamento,
           comprovante_url: comprovanteUrl,
           data_pagamento: new Date().toISOString(),
+          data_validade: event.recorrencia === "mensal" && event.data_fim ? event.data_fim : null,
         });
 
       if (paymentError) throw paymentError;

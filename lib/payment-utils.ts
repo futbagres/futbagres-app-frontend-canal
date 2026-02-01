@@ -285,7 +285,11 @@ export async function approvePayment(paymentId: string): Promise<{
     
     // Calcular data de validade
     let dataValidade = null;
-    if (event.data_evento) {
+    if (event.recorrencia === "mensal" && event.data_fim) {
+      // Para eventos mensais, válido até a data fim
+      dataValidade = event.data_fim;
+    } else if (event.data_evento) {
+      // Para eventos únicos, usar sazonalidade
       dataValidade = calculatePaymentValidity(
         event.data_evento,
         event.sazonalidade_meses

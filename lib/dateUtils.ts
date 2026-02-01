@@ -24,19 +24,20 @@ export function calcularProximaData(diaSemana: number): string {
 
 /**
  * Obtém a data do evento (para eventos únicos retorna a data_evento, 
- * para recorrentes calcula a próxima ocorrência)
+ * para mensais retorna a data_inicio)
  */
 export function obterDataEvento(event: {
-  recorrencia: 'unico' | 'semanal';
+  recorrencia: 'unico' | 'mensal';
   data_evento: string | null;
+  data_inicio: string | null;
   dia_semana: number | null;
 }): string | null {
   if (event.recorrencia === 'unico') {
     return event.data_evento;
   }
   
-  if (event.recorrencia === 'semanal' && event.dia_semana !== null) {
-    return calcularProximaData(event.dia_semana);
+  if (event.recorrencia === 'mensal' && event.data_inicio !== null) {
+    return event.data_inicio;
   }
   
   return null;
@@ -126,4 +127,37 @@ export function obterMensagemProximidade(dataString: string): string {
   if (dias <= 7) return `Em ${dias} dias`;
   
   return formatarDataCurta(dataString);
+}
+
+/**
+ * Gera todas as datas de recorrência mensal entre data_inicio e data_fim
+ * @param dataInicio Data de início (YYYY-MM-DD)
+ * @param dataFim Data de fim (YYYY-MM-DD)
+ * @returns Array de datas no formato YYYY-MM-DD
+ */
+export function gerarDatasRecorrenciaMensal(dataInicio: string, dataFim: string): string[] {
+  const datas: string[] = [];
+  const inicio = new Date(dataInicio + 'T00:00:00');
+  const fim = new Date(dataFim + 'T00:00:00');
+  
+  // Começar da data de início
+  let dataAtual = new Date(inicio);
+  
+  // Adicionar a primeira data
+  datas.push(dataInicio);
+  
+  // Gerar datas mensais até a data fim
+  while (true) {
+    // Avançar 1 mês
+    dataAtual.setMonth(dataAtual.getMonth() + 1);
+    
+    // Se passou da data fim, parar
+    if (dataAtual > fim) break;
+    
+    // Formatar como YYYY-MM-DD
+    const dataFormatada = dataAtual.toISOString().split('T')[0];
+    datas.push(dataFormatada);
+  }
+  
+  return datas;
 }

@@ -78,13 +78,13 @@ export default function EventRegistrationModal({
                 <span className="text-2xl">📅</span>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {event.recorrencia === "unico" ? "Data" : "Próxima Data"}
+                    {event.recorrencia === "unico" ? "Data" : "Data de Início"}
                   </p>
                   <p className="font-semibold text-gray-900 dark:text-white">
                     {formatarData(dataEvento)}
-                    {event.recorrencia === "semanal" && event.dia_semana !== null && (
-                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                        (Toda {obterNomeDiaSemana(event.dia_semana)})
+                    {event.recorrencia === "mensal" && event.data_inicio && event.data_fim && (
+                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-2 block">
+                        Até {formatarData(event.data_fim)}
                       </span>
                     )}
                   </p>
@@ -178,11 +178,11 @@ export default function EventRegistrationModal({
               <strong>7. Responsabilidade:</strong> O organizador não se responsabiliza
               por lesões ou acidentes. Participe por sua conta e risco.
             </p>
-            {event.recorrencia === "semanal" && (
+            {event.recorrencia === "mensal" && (
               <p>
-                <strong>8. Evento Recorrente:</strong> Esta é uma inscrição para o
-                próximo evento. Você precisará se inscrever novamente para as próximas
-                datas.
+                <strong>8. Evento Mensal:</strong> Esta inscrição é válida para todo o
+                período do evento mensal. Seu pagamento garante participação até a data
+                de fim especificada.
               </p>
             )}
           </div>

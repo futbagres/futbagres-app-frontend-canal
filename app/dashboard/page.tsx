@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import FloatingNotificationButton from "../components/FloatingNotificationButton";
@@ -26,6 +25,7 @@ import {
   type Coordinates,
   type RadiusValue 
 } from "@/lib/geolocation";
+import { formatarData, gerarDatasRecorrenciaMensal, eventoPassou } from "@/lib/dateUtils";
 
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
@@ -751,6 +751,7 @@ export default function DashboardPage() {
                         setSelectedEventForGameDay(event);
                         setGameDayModalOpen(true);
                       }}
+                      onViewParticipants={() => handleOpenParticipantsModal(event)}
                     />
                   ))}
                 </div>
@@ -781,38 +782,87 @@ export default function DashboardPage() {
               )}
             </section>
 
-            {/* Próximos Eventos */}
+            {/* Meus Próximos Eventos */}
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  📅 Eventos Disponíveis
+                  📅 Meus Próximos Eventos
                 </h2>
               </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center min-h-[200px]">
-                  <p className="text-gray-500 dark:text-gray-400 text-center">
-                    Nenhum evento próximo.<br />
-                    <Link href="/eventos/criar" className="text-green-600 hover:text-green-700 font-semibold">
-                      Criar primeiro evento
-                    </Link>
-                  </p>
-                </div>
-              </div>
-            </section>
 
-            {/* Eventos Próximos a Você */}
-            {/* <section>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                📍 Eventos Próximos a Você
-              </h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center min-h-[200px]">
-                  <p className="text-gray-500 dark:text-gray-400 text-center">
-                    Ative sua localização para<br />ver eventos próximos
-                  </p>
+              {loadingRegisteredEvents ? (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <div className="animate-spin h-8 w-8 border-4 border-green-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-lg">Carregando seus eventos...</p>
+                  </div>
                 </div>
-              </div>
-            </section> */}
+              ) : myRegisteredEvents.length > 0 ? (
+                <>
+                  <div className="mb-4">
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">
+                      🎾 Você está inscrito em <span className="font-bold text-green-600">{myRegisteredEvents.length}</span> evento(s)
+                    </p>
+                  </div>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {myRegisteredEvents.flatMap((event: any) => {
+                      const participation = userParticipations.get(event.id);
+                      const creatorProfile = creatorProfiles.get(event.criador_id);
+                      
+                      // Para eventos mensais, gerar múltiplas datas
+                      if (event.recorrencia === "mensal" && event.data_inicio && event.data_fim) {
+                        const datasRecorrencia = gerarDatasRecorrenciaMensal(event.data_inicio, event.data_fim);
+                        return datasRecorrencia
+                          .filter(data => !eventoPassou(data)) // Só mostrar futuras
+                          .map(data => ({
+                            ...event,
+                            dataEspecifica: data,
+                            tituloOriginal: event.titulo,
+                            titulo: `${event.titulo} - ${formatarData(data)}`
+                          }));
+                      } else {
+                        // Evento único
+                        const dataEvento = event.data_evento;
+                        if (dataEvento && !eventoPassou(dataEvento)) {
+                          return [{
+                            ...event,
+                            dataEspecifica: dataEvento,
+                            tituloOriginal: event.titulo
+                          }];
+                        }
+                        return [];
+                      }
+                    }).map((eventItem: any) => (
+                      <EventCard
+                        key={`${eventItem.id}-${eventItem.dataEspecifica}`}
+                        event={eventItem}
+                        onView={() => handleViewEvent(eventItem)}
+                        onRegister={() => handleRegisterForEvent(eventItem)}
+                        onCancelRegistration={() => handleCancelRegistration(eventItem)}
+                        onPayment={() => handleOpenPaymentModal(eventItem)}
+                        onViewParticipants={() => handleOpenParticipantsModal(eventItem)}
+                        showDistance={false}
+                        isRegistered={true}
+                        registrationStatus={userParticipations.get(eventItem.id)?.status}
+                        participation={userParticipations.get(eventItem.id)}
+                        currentUserId={user?.id}
+                        creatorProfile={creatorProfiles.get(eventItem.criador_id)}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <div className="text-5xl mb-4">📅</div>
+                    <p className="text-lg mb-2">Nenhum evento próximo</p>
+                    <p className="text-sm">
+                      Você ainda não se inscreveu em nenhum evento futuro. Explore os eventos disponíveis!
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
 
             {/* Histórico */}
             <section>
@@ -963,24 +1013,21 @@ function isWithin24Hours(event: Event): boolean {
   
   let eventDateTime: Date;
   
-  if (event.recorrencia === "unico" && event.data_evento) {
+  if ((event as any).dataEspecifica) {
+    // Usar data específica se disponível (para recorrências)
+    const [year, month, day] = (event as any).dataEspecifica.split("-").map(Number);
+    const [hour, minute] = event.horario_inicio.split(":").map(Number);
+    eventDateTime = new Date(year, month - 1, day, hour, minute);
+  } else if (event.recorrencia === "unico" && event.data_evento) {
     // Evento único - usar data_evento
     const [year, month, day] = event.data_evento.split("-").map(Number);
     const [hour, minute] = event.horario_inicio.split(":").map(Number);
     eventDateTime = new Date(year, month - 1, day, hour, minute);
-  } else if (event.recorrencia === "semanal" && event.dia_semana !== null) {
-    // Evento semanal - calcular próxima ocorrência
-    const dayOfWeek = event.dia_semana;
+  } else if (event.recorrencia === "mensal" && event.data_inicio) {
+    // Evento mensal - usar data_inicio
+    const [year, month, day] = event.data_inicio.split("-").map(Number);
     const [hour, minute] = event.horario_inicio.split(":").map(Number);
-    
-    // Encontrar próxima ocorrência do dia da semana
-    let daysUntilEvent = dayOfWeek - now.getDay();
-    if (daysUntilEvent < 0) daysUntilEvent += 7;
-    if (daysUntilEvent === 0 && now.getHours() > hour) daysUntilEvent = 7;
-    
-    eventDateTime = new Date(now);
-    eventDateTime.setDate(now.getDate() + daysUntilEvent);
-    eventDateTime.setHours(hour, minute, 0, 0);
+    eventDateTime = new Date(year, month - 1, day, hour, minute);
   } else {
     return false;
   }
@@ -1081,18 +1128,23 @@ function EventCard({
       </div>
       
       <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-        {event.recorrencia === "semanal" && event.dia_semana !== null && (
+        {(event as any).dataEspecifica ? (
+          // Data específica para recorrências mensais
           <div className="flex items-center gap-2">
             <span>📅</span>
-            <span>Toda {diasSemana[event.dia_semana]}</span>
+            <span>{formatarData((event as any).dataEspecifica)}</span>
           </div>
-        )}
-        {event.recorrencia === "unico" && (
+        ) : event.recorrencia === "mensal" && event.data_inicio && event.data_fim ? (
+          <div className="flex items-center gap-2">
+            <span>📅</span>
+            <span>Mensal: {formatarData(event.data_inicio)} até {formatarData(event.data_fim)}</span>
+          </div>
+        ) : event.recorrencia === "unico" ? (
           <div className="flex items-center gap-2">
             <span>📅</span>
             <span>Evento Único</span>
           </div>
-        )}
+        ) : null}
         <div className="flex items-center gap-2">
           <span>🕐</span>
           <span>{event.horario_inicio} - {event.horario_fim}</span>
@@ -1240,6 +1292,15 @@ function EventCard({
                     >
                       <span>📊</span>
                       Analytics
+                    </button>
+                  )}
+                  {onViewParticipants && (
+                    <button 
+                      onClick={onViewParticipants}
+                      className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                    >
+                      <span>👥</span>
+                      Participantes
                     </button>
                   )}
                   {onDelete && (

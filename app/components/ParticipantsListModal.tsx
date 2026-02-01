@@ -26,6 +26,7 @@ export default function ParticipantsListModal({
 }: ParticipantsListModalProps) {
   const [participants, setParticipants] = useState<ParticipantWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [removing, setRemoving] = useState<string | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     confirmados: 0,
@@ -183,6 +184,52 @@ export default function ParticipantsListModal({
     });
   };
 
+  const handleRemoveParticipant = async (participant: EventParticipant, payment: EventPayment | null) => {
+    // Verificar se o participante já pagou
+    if (payment && payment.status === 'confirmado') {
+      alert('❌ Não é possível remover participantes que já realizaram o pagamento!');
+      return;
+    }
+
+    const confirmRemove = window.confirm(
+      `Tem certeza que deseja remover este participante?\n\nIsso removerá a inscrição de forma permanente.`
+    );
+
+    if (!confirmRemove) return;
+
+    setRemoving(participant.id);
+
+    try {
+      // Remover o participante
+      const { error: participantError } = await supabase
+        .from('event_participants')
+        .delete()
+        .eq('id', participant.id);
+
+      if (participantError) throw participantError;
+
+      // Se houver pagamento pendente/processando, remover também
+      if (payment && payment.status !== 'confirmado') {
+        const { error: paymentError } = await supabase
+          .from('event_payments')
+          .delete()
+          .eq('id', payment.id);
+
+        if (paymentError) console.error('Erro ao remover pagamento:', paymentError);
+      }
+
+      alert('✅ Participante removido com sucesso!');
+      
+      // Recarregar lista de participantes
+      await loadParticipants();
+    } catch (error) {
+      console.error('Erro ao remover participante:', error);
+      alert('❌ Erro ao remover participante. Tente novamente.');
+    } finally {
+      setRemoving(null);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="👥 Participantes do Evento">
       <div className="max-w-4xl w-full">
@@ -279,6 +326,39 @@ export default function ParticipantsListModal({
                           </div>
                         )}
                       </div>
+
+                      {/* Botão de Remover (apenas para admin) */}
+                      {isAdmin && (
+                        <div className="flex-shrink-0">
+                          {payment && payment.status === 'confirmado' ? (
+                            <button
+                              disabled
+                              className="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 rounded-lg text-sm font-semibold cursor-not-allowed"
+                              title="Não é possível remover participantes que já pagaram"
+                            >
+                              🔒 Pago
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleRemoveParticipant(participant, payment)}
+                              disabled={removing === participant.id}
+                              className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                              title="Remover participante"
+                            >
+                              {removing === participant.id ? (
+                                <>
+                                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                </>
+                              ) : (
+                                <>
+                                  <span>🗑️</span>
+                                  Remover
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

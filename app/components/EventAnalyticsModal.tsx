@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { supabase } from "@/lib/supabase";
+import { formatarData } from "@/lib/dateUtils";
 import type { Event } from "@/types/database.types";
 
 interface EventAnalyticsModalProps {
@@ -199,8 +200,8 @@ export default function EventAnalyticsModal({
           </h3>
           <div className="flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400">
             <span>🕐 {event.horario_inicio} - {event.horario_fim}</span>
-            {event.recorrencia === "semanal" && event.dia_semana !== null && (
-              <span>📅 Toda {diasSemana[event.dia_semana]}</span>
+            {event.recorrencia === "mensal" && event.data_inicio && event.data_fim && (
+              <span>📅 Mensal: {formatarData(event.data_inicio)} até {formatarData(event.data_fim)}</span>
             )}
           </div>
         </div>

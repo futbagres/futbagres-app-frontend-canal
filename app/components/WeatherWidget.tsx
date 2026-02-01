@@ -6,17 +6,20 @@ import {
   getWeatherIconUrl,
   getWeatherRecommendation,
 } from "@/lib/weather";
+import { formatarData } from "@/lib/dateUtils";
 
 interface WeatherWidgetProps {
   latitude: number;
   longitude: number;
   eventTitle: string;
+  eventDate?: string; // Data do evento (opcional)
 }
 
 export default function WeatherWidget({
   latitude,
   longitude,
   eventTitle,
+  eventDate,
 }: WeatherWidgetProps) {
   const [weather, setWeather] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -102,6 +105,11 @@ export default function WeatherWidget({
               <h4 className="text-sm font-bold text-gray-900 dark:text-white">
                 Previsão do Tempo
               </h4>
+              {eventDate && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  📅 {formatarData(eventDate)}
+                </p>
+              )}
               <p className="text-xs text-gray-600 dark:text-gray-300 capitalize">
                 {weather.description}
               </p>

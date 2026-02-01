@@ -22,7 +22,7 @@ export interface Profile {
 }
 
 export type TipoFutebol = 'campo' | 'salao' | 'society';
-export type Recorrencia = 'unico' | 'semanal';
+export type Recorrencia = 'unico' | 'mensal';
 export type StatusEvento = 'ativo' | 'cancelado' | 'finalizado';
 
 export interface Event {
@@ -31,8 +31,10 @@ export interface Event {
   tipo_futebol: TipoFutebol;
   max_participantes: number;
   recorrencia: Recorrencia;
-  dia_semana: number | null;
+  dia_semana: number | null; // Mantido para compatibilidade, mas não usado em mensal
   data_evento: string | null; // Data específica para eventos únicos (YYYY-MM-DD)
+  data_inicio: string | null; // Data de início para eventos mensais (YYYY-MM-DD)
+  data_fim: string | null; // Data de fim para eventos mensais (YYYY-MM-DD)
   horario_inicio: string;
   horario_fim: string;
   valor_por_pessoa: number;
