@@ -214,14 +214,14 @@ export default function TeamsViewModal({
                     
                     <div className="rounded-xl border-4 border-green-500 overflow-hidden shadow-2xl ring-4 ring-green-200">
                       {/* Header do Time */}
-                      <div className={`${teamColor.bg} p-5 text-white relative`}>
-                        <div className="absolute top-3 right-3 bg-yellow-400 text-yellow-900 text-sm font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                      <div className={`${teamColor.bg} p-4 sm:p-5 text-white relative`}>
+                        <div className="sm:absolute sm:top-3 sm:right-3 mb-2 sm:mb-0 inline-flex bg-yellow-400 text-yellow-900 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full shadow-lg items-center gap-1">
                           ★ VOCÊ ESTÁ AQUI
                         </div>
-                        <h4 className="text-3xl font-bold mb-2">
+                        <h4 className="text-xl sm:text-3xl font-bold mb-2">
                           Time {team.team_name}
                         </h4>
-                        <div className="flex items-center gap-4 text-sm opacity-90">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm opacity-90">
                           <span className="bg-white/20 px-3 py-1 rounded-full">
                             #{team.team_number}
                           </span>
@@ -255,7 +255,7 @@ export default function TeamsViewModal({
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600">
+                              <p className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600">
                                 {player.player_score.toFixed(1)}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -292,7 +292,7 @@ export default function TeamsViewModal({
                     return (
                       <div
                         key={team.id}
-                        className={`rounded-xl border-3 ${teamColor.border} overflow-hidden shadow-lg hover:shadow-xl transition-shadow`}
+                        className={`rounded-xl border-2 ${teamColor.border} overflow-hidden shadow-lg hover:shadow-xl transition-shadow`}
                       >
                         {/* Header do Time */}
                         <div className={`${teamColor.bg} p-4 text-white`}>

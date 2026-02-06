@@ -252,384 +252,459 @@ export default function PerfilPage() {
     <>
       <Header />
       <FloatingNotificationButton userId={user.id} />
-      <main className="min-h-screen pt-24 pb-12 px-4 bg-gray-50 dark:bg-gray-900">
-        <div className="mx-auto max-w-2xl">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-            {/* Cabeçalho */}
-            <div className="text-center mb-8">
-              <AvatarUpload
-                user={user}
-                currentAvatarUrl={profile?.avatar_url || null}
-                onAvatarUpdate={handleAvatarUpdate}
-              />
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 mt-4">
-                Meu Perfil
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Role: <span className="font-semibold capitalize text-green-600">{profile?.role || "carregando..."}</span>
-              </p>
-              {!profile && (
-                <button
-                  onClick={refreshProfile}
-                  className="mt-4 text-sm text-green-600 hover:text-green-700 underline"
-                >
-                  Recarregar perfil
-                </button>
-              )}
+      <main className="min-h-screen pt-24 pb-12 px-4 bg-gradient-to-br from-gray-50 via-green-50/30 to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+        <div className="mx-auto max-w-6xl">
+          
+          {/* Header Rico com Avatar e BagreScore */}
+          <div className="bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 rounded-3xl shadow-2xl p-8 mb-8 relative overflow-hidden">
+            <div className="absolute inset-0 bg-black/10"></div>
+            
+            {/* Padrão de fundo */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-0 w-40 h-40 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+              <div className="absolute bottom-0 right-0 w-60 h-60 bg-white rounded-full translate-x-1/2 translate-y-1/2"></div>
             </div>
 
-            {/* Mensagens */}
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              </div>
-            )}
-
-            {success && (
-              <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <p className="text-sm text-green-600 dark:text-green-400">
-                  ✅ Perfil atualizado com sucesso!
-                </p>
-              </div>
-            )}
-
-            {/* Formulário */}
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Dados Básicos */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                  📝 Dados Pessoais
-                </h3>
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+              {/* Avatar Grande */}
+              <div className="relative group">
+                <AvatarUpload
+                  user={user}
+                  currentAvatarUrl={profile?.avatar_url || null}
+                  onAvatarUpdate={handleAvatarUpdate}
+                />
                 
-                <div>
-                  <label
-                    htmlFor="nome"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    Nome Completo
-                  </label>
-                  <input
-                    type="text"
-                    id="nome"
-                    name="nome"
-                    value={formData.nome}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    E-mail
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="chave_pix"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    💳 Chave PIX (para receber pagamentos)
-                  </label>
-                  <input
-                    type="text"
-                    id="chave_pix"
-                    name="chave_pix"
-                    value={formData.chave_pix}
-                    onChange={handleChange}
-                    placeholder="CPF, email, telefone ou chave aleatória"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                  />
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    ℹ️ Necessário apenas se você criar eventos pagos. Os jogadores usarão esta chave para pagar.
-                  </p>
-                </div>
-              </div>
-
-              {/* Posição do Jogador */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                  ⚽ Minha Posição
-                </h3>
-                
-                <div>
-                  <label
-                    htmlFor="posicao"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    Selecione sua posição principal
-                  </label>
-                  <select
-                    id="posicao"
-                    name="posicao"
-                    value={formData.posicao}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                  >
-                    <option value="">Selecione uma posição</option>
-                    {posicoes.map((pos) => (
-                      <option key={pos.value} value={pos.value}>
-                        {pos.emoji} {pos.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Autoavaliação */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                  ⭐ Autoavaliação
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Como você avalia suas habilidades? (0.5 a 5 estrelas)
-                </p>
-                
-                <div className="space-y-6 bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg">
-                  <StarRating
-                    label="🛡️ Defesa"
-                    value={formData.auto_defesa}
-                    onChange={(value) => handleRatingChange("auto_defesa", value)}
-                    showValue
-                  />
-                  <StarRating
-                    label="⚡ Velocidade"
-                    value={formData.auto_velocidade}
-                    onChange={(value) => handleRatingChange("auto_velocidade", value)}
-                    showValue
-                  />
-                  <StarRating
-                    label="🎯 Passe"
-                    value={formData.auto_passe}
-                    onChange={(value) => handleRatingChange("auto_passe", value)}
-                    showValue
-                  />
-                  <StarRating
-                    label="⚽ Chute"
-                    value={formData.auto_chute}
-                    onChange={(value) => handleRatingChange("auto_chute", value)}
-                    showValue
-                  />
-                  <StarRating
-                    label="🎨 Drible"
-                    value={formData.auto_drible}
-                    onChange={(value) => handleRatingChange("auto_drible", value)}
-                    showValue
-                  />
-                </div>
-              </div>
-
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  <strong>ID do Usuário:</strong> <code className="text-xs">{user.id}</code>
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  <strong>Membro desde:</strong> {new Date(profile?.created_at || "").toLocaleDateString("pt-BR")}
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full rounded-lg bg-green-600 px-4 py-3 text-white font-semibold hover:bg-green-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {saving ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Salvando...
-                  </>
-                ) : (
-                  "Salvar Alterações"
+                {/* Badge de BagreScore */}
+                {bagreScore && bagreScore.media >= 4.0 && (
+                  <div className="absolute -bottom-2 -right-2 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full p-3 shadow-xl animate-pulse">
+                    <span className="text-2xl">🏆</span>
+                  </div>
                 )}
-              </button>
-            </form>
-
-            {/* BagreScore - Avaliações Recebidas */}
-            <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                🏆 BagreScore
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                  (Avaliações de outros jogadores)
-                </span>
-              </h2>
-
-              {loadingBagreScore ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin h-8 w-8 border-4 border-green-600 border-t-transparent rounded-full mx-auto"></div>
-                </div>
-              ) : bagreScore ? (
-                <div className="space-y-6">
-                  {/* Média Geral */}
-                  <div className="text-center p-6 bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-lg border-2 border-yellow-400 dark:border-yellow-600">
-                    <div className="text-5xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
-                      {bagreScore.media.toFixed(1)}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      Média Geral
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-500">
-                      Baseado em {bagreScore.totalAvaliacoes} avaliação(ões)
-                    </div>
-                  </div>
-
-                  {/* Habilidades */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          🛡️ Defesa
-                        </span>
-                        <span className="text-lg font-bold text-green-600">
-                          {bagreScore.defesa.toFixed(1)}
-                        </span>
-                      </div>
-                      <StarRating value={bagreScore.defesa} readonly size="sm" />
-                    </div>
-
-                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          ⚡ Velocidade
-                        </span>
-                        <span className="text-lg font-bold text-green-600">
-                          {bagreScore.velocidade.toFixed(1)}
-                        </span>
-                      </div>
-                      <StarRating value={bagreScore.velocidade} readonly size="sm" />
-                    </div>
-
-                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          🎯 Passe
-                        </span>
-                        <span className="text-lg font-bold text-green-600">
-                          {bagreScore.passe.toFixed(1)}
-                        </span>
-                      </div>
-                      <StarRating value={bagreScore.passe} readonly size="sm" />
-                    </div>
-
-                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          ⚽ Chute
-                        </span>
-                        <span className="text-lg font-bold text-green-600">
-                          {bagreScore.chute.toFixed(1)}
-                        </span>
-                      </div>
-                      <StarRating value={bagreScore.chute} readonly size="sm" />
-                    </div>
-
-                    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg md:col-span-2">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          🎨 Drible
-                        </span>
-                        <span className="text-lg font-bold text-green-600">
-                          {bagreScore.drible.toFixed(1)}
-                        </span>
-                      </div>
-                      <StarRating value={bagreScore.drible} readonly size="sm" />
-                    </div>
-                  </div>
-
-                  {/* Histórico de Avaliações */}
-                  {avaliacoes.length > 0 && (
-                    <div className="mt-6">
-                      <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-3">
-                        📋 Histórico de Avaliações
-                      </h3>
-                      <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {avaliacoes.map((aval, index) => (
-                          <div
-                            key={index}
-                            className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
-                          >
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <div className="font-medium text-gray-900 dark:text-white">
-                                  {aval.evento_titulo}
-                                </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400">
-                                  Avaliado por: {aval.avaliador_nome}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-500">
-                                  {new Date(aval.created_at).toLocaleDateString("pt-BR")}
-                                </div>
-                              </div>
-                              <div className="text-lg font-bold text-yellow-600">
-                                {((aval.defesa + aval.velocidade + aval.passe + aval.chute + aval.drible) / 5).toFixed(1)} ⭐
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-5 gap-2 text-center text-xs">
-                              <div>
-                                <div className="text-gray-600 dark:text-gray-400">Defesa</div>
-                                <div className="font-bold text-gray-900 dark:text-white">{aval.defesa}</div>
-                              </div>
-                              <div>
-                                <div className="text-gray-600 dark:text-gray-400">Velocidade</div>
-                                <div className="font-bold text-gray-900 dark:text-white">{aval.velocidade}</div>
-                              </div>
-                              <div>
-                                <div className="text-gray-600 dark:text-gray-400">Passe</div>
-                                <div className="font-bold text-gray-900 dark:text-white">{aval.passe}</div>
-                              </div>
-                              <div>
-                                <div className="text-gray-600 dark:text-gray-400">Chute</div>
-                                <div className="font-bold text-gray-900 dark:text-white">{aval.chute}</div>
-                              </div>
-                              <div>
-                                <div className="text-gray-600 dark:text-gray-400">Drible</div>
-                                <div className="font-bold text-gray-900 dark:text-white">{aval.drible}</div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              </div>
+              
+              {/* Info do Usuário */}
+              <div className="flex-1 text-center md:text-left">
+                <h1 className="text-4xl font-bold text-white mb-3">
+                  {formData.nome || "Complete seu perfil"}
+                </h1>
+                
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-4">
+                  {formData.posicao && (
+                    <span className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white font-medium">
+                      {posicoes.find(p => p.value === formData.posicao)?.emoji} 
+                      {posicoes.find(p => p.value === formData.posicao)?.label}
+                    </span>
+                  )}
+                  
+                  <span className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white text-sm">
+                    👤 {profile?.role || "player"}
+                  </span>
+                  
+                  {bagreScore && (
+                    <span className="flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 px-4 py-2 rounded-full text-gray-900 font-bold text-sm shadow-lg">
+                      ⭐ {bagreScore.media.toFixed(1)} BagreScore
+                    </span>
+                  )}
+                  
+                  {bagreScore && bagreScore.totalAvaliacoes >= 10 && (
+                    <span className="flex items-center gap-2 bg-purple-500 px-4 py-2 rounded-full text-white font-semibold text-sm shadow-lg">
+                      🔥 Jogador Experiente
+                    </span>
                   )}
                 </div>
-              ) : (
-                <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <div className="text-4xl mb-4">🎮</div>
-                  <p className="text-gray-600 dark:text-gray-400 mb-2">
-                    Você ainda não possui avaliações
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500">
-                    Participe de eventos e peça para outros jogadores te avaliarem!
-                  </p>
+                
+                <p className="text-white/80 text-sm">
+                  📅 Membro desde {new Date(profile?.created_at || "").toLocaleDateString("pt-BR", { 
+                    month: "long", 
+                    year: "numeric" 
+                  })}
+                </p>
+              </div>
+
+              {/* Stats Rápidos */}
+              <div className="flex md:flex-col gap-4">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[100px]">
+                  <div className="text-3xl font-bold text-white">{bagreScore?.totalAvaliacoes || 0}</div>
+                  <div className="text-xs text-white/80">Avaliações</div>
+                </div>
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[100px]">
+                  <div className="text-3xl font-bold text-white">
+                    {formData.auto_defesa ? 
+                      ((formData.auto_defesa + formData.auto_velocidade + formData.auto_passe + formData.auto_chute + formData.auto_drible) / 5).toFixed(1) 
+                      : "N/A"}
+                  </div>
+                  <div className="text-xs text-white/80">Autoavaliação</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Responsivo: Form + BagreScore */}
+          <div className="grid lg:grid-cols-3 gap-8">
+            
+            {/* Coluna Principal - Formulário */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* Mensagens */}
+              {error && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-lg animate-shake">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">❌</span>
+                    <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
+                  </div>
                 </div>
               )}
+
+              {success && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 rounded-lg animate-bounce">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">✅</span>
+                    <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                      Perfil atualizado com sucesso!
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Card: Dados Pessoais */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <span className="text-2xl">📝</span>
+                  Dados Pessoais
+                </h3>
+                
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Nome Completo
+                    </label>
+                    <input
+                      type="text"
+                      name="nome"
+                      value={formData.nome}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all"
+                      placeholder="Seu nome completo"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      E-mail
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all"
+                      placeholder="seu@email.com"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      <span className="inline-flex items-center gap-2">
+                        💳 Chave PIX
+                        <span className="text-xs font-normal text-gray-500">(opcional)</span>
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      name="chave_pix"
+                      value={formData.chave_pix}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 transition-all"
+                      placeholder="CPF, e-mail, telefone ou chave aleatória"
+                    />
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
+                      <span>ℹ️</span>
+                      <span>Necessário apenas se você criar eventos pagos. Os jogadores usarão esta chave para pagar.</span>
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      ⚽ Posição Principal
+                    </label>
+                    <select
+                      name="posicao"
+                      value={formData.posicao}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all"
+                    >
+                      <option value="">Selecione sua posição</option>
+                      {posicoes.map((pos) => (
+                        <option key={pos.value} value={pos.value}>
+                          {pos.emoji} {pos.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Autoavaliação Compacta */}
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-800/50 p-6 rounded-xl border-2 border-gray-200 dark:border-gray-600">
+                    <h4 className="text-md font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <span>⭐</span>
+                      Autoavaliação
+                      <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
+                        (Como você se avalia?)
+                      </span>
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <StarRating
+                        label="🛡️ Defesa"
+                        value={formData.auto_defesa}
+                        onChange={(value) => handleRatingChange("auto_defesa", value)}
+                        showValue
+                      />
+                      <StarRating
+                        label="⚡ Velocidade"
+                        value={formData.auto_velocidade}
+                        onChange={(value) => handleRatingChange("auto_velocidade", value)}
+                        showValue
+                      />
+                      <StarRating
+                        label="🎯 Passe"
+                        value={formData.auto_passe}
+                        onChange={(value) => handleRatingChange("auto_passe", value)}
+                        showValue
+                      />
+                      <StarRating
+                        label="⚽ Chute"
+                        value={formData.auto_chute}
+                        onChange={(value) => handleRatingChange("auto_chute", value)}
+                        showValue
+                      />
+                      <StarRating
+                        label="🎨 Drible"
+                        value={formData.auto_drible}
+                        onChange={(value) => handleRatingChange("auto_drible", value)}
+                        showValue
+                      />
+                    </div>
+                  </div>
+
+                  {/* Botão Salvar */}
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full rounded-xl bg-gradient-to-r from-green-600 to-blue-600 px-6 py-4 text-white font-bold text-lg hover:from-green-700 hover:to-blue-700 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
+                  >
+                    {saving ? (
+                      <>
+                        <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Salvando alterações...
+                      </>
+                    ) : (
+                      <>
+                        <span>💾</span>
+                        Salvar Alterações
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              {/* Card: Informações Técnicas */}
+              <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-lg p-6 border border-gray-300 dark:border-gray-700">
+                <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3 flex items-center gap-2">
+                  <span>🔧</span>
+                  Informações Técnicas
+                </h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-start gap-2">
+                    <span className="font-semibold text-gray-700 dark:text-gray-300 min-w-[80px]">ID:</span>
+                    <code className="text-gray-600 dark:text-gray-400 break-all bg-white dark:bg-gray-800 px-2 py-1 rounded">{user.id}</code>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-700 dark:text-gray-300 min-w-[80px]">Criado em:</span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {new Date(profile?.created_at || "").toLocaleString("pt-BR")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna Lateral - BagreScore e Avaliações */}
+            <div className="lg:col-span-1 space-y-6">
+              
+              {/* Card: BagreScore Principal */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sticky top-24">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <span className="text-2xl">🏆</span>
+                  BagreScore
+                </h2>
+
+                {loadingBagreScore ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin h-12 w-12 border-4 border-green-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-sm text-gray-500">Carregando...</p>
+                  </div>
+                ) : bagreScore ? (
+                  <div className="space-y-6">
+                    {/* Média Geral Destaque */}
+                    <div className="text-center p-6 bg-gradient-to-br from-yellow-400 via-orange-400 to-red-400 rounded-2xl shadow-2xl">
+                      <div className="text-6xl font-black text-white mb-2 drop-shadow-lg">
+                        {bagreScore.media.toFixed(1)}
+                      </div>
+                      <div className="text-white font-bold mb-1">Média Geral</div>
+                      <div className="text-white/90 text-xs">
+                        {bagreScore.totalAvaliacoes} avaliação{bagreScore.totalAvaliacoes !== 1 ? "ões" : ""}
+                      </div>
+                    </div>
+
+                    {/* Habilidades Compactas */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">🛡️</span>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Defesa</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-lg font-bold text-green-600">{bagreScore.defesa.toFixed(1)}</div>
+                          <StarRating value={bagreScore.defesa} readonly size="sm" />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">⚡</span>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Velocidade</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-lg font-bold text-blue-600">{bagreScore.velocidade.toFixed(1)}</div>
+                          <StarRating value={bagreScore.velocidade} readonly size="sm" />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">🎯</span>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Passe</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-lg font-bold text-purple-600">{bagreScore.passe.toFixed(1)}</div>
+                          <StarRating value={bagreScore.passe} readonly size="sm" />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">⚽</span>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Chute</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-lg font-bold text-red-600">{bagreScore.chute.toFixed(1)}</div>
+                          <StarRating value={bagreScore.chute} readonly size="sm" />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">🎨</span>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Drible</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-lg font-bold text-orange-600">{bagreScore.drible.toFixed(1)}</div>
+                          <StarRating value={bagreScore.drible} readonly size="sm" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Histórico de Avaliações */}
+                    {avaliacoes.length > 0 && (
+                      <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                          <span>📋</span>
+                          Últimas Avaliações
+                        </h3>
+                        <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
+                          {avaliacoes.slice(0, 5).map((aval, index) => (
+                            <div
+                              key={index}
+                              className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/30 dark:to-gray-800/30 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-lg transition-all"
+                            >
+                              <div className="flex justify-between items-start mb-3">
+                                <div className="flex-1">
+                                  <div className="font-semibold text-sm text-gray-900 dark:text-white mb-1 line-clamp-1">
+                                    {aval.evento_titulo}
+                                  </div>
+                                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                                    👤 {aval.avaliador_nome}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                    📅 {new Date(aval.created_at).toLocaleDateString("pt-BR")}
+                                  </div>
+                                </div>
+                                <div className="text-2xl font-bold text-yellow-500">
+                                  {((aval.defesa + aval.velocidade + aval.passe + aval.chute + aval.drible) / 5).toFixed(1)} ⭐
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-5 gap-1 text-center text-xs">
+                                <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                  <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">DEF</div>
+                                  <div className="font-bold text-gray-900 dark:text-white">{aval.defesa}</div>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                  <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">VEL</div>
+                                  <div className="font-bold text-gray-900 dark:text-white">{aval.velocidade}</div>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                  <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">PAS</div>
+                                  <div className="font-bold text-gray-900 dark:text-white">{aval.passe}</div>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                  <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">CHU</div>
+                                  <div className="font-bold text-gray-900 dark:text-white">{aval.chute}</div>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 p-2 rounded">
+                                  <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">DRI</div>
+                                  <div className="font-bold text-gray-900 dark:text-white">{aval.drible}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {avaliacoes.length > 5 && (
+                          <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
+                            + {avaliacoes.length - 5} avaliações mais antigas
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">🎮</div>
+                    <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">
+                      Sem avaliações ainda
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-500">
+                      Participe de eventos e peça para outros jogadores te avaliarem!
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

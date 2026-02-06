@@ -102,6 +102,7 @@ export default function PresenceButtons({
     color: string;
     hoverColor: string;
     activeColor: string;
+    ringColor: string;
   }[] = [
     {
       status: "confirmado",
@@ -110,6 +111,7 @@ export default function PresenceButtons({
       color: "bg-green-100 text-green-700 border-green-300",
       hoverColor: "hover:bg-green-200",
       activeColor: "bg-green-600 text-white border-green-600",
+      ringColor: "ring-green-400",
     },
     {
       status: "talvez",
@@ -118,6 +120,7 @@ export default function PresenceButtons({
       color: "bg-yellow-100 text-yellow-700 border-yellow-300",
       hoverColor: "hover:bg-yellow-200",
       activeColor: "bg-yellow-600 text-white border-yellow-600",
+      ringColor: "ring-yellow-400",
     },
     {
       status: "nao_vou",
@@ -126,6 +129,7 @@ export default function PresenceButtons({
       color: "bg-red-100 text-red-700 border-red-300",
       hoverColor: "hover:bg-red-200",
       activeColor: "bg-red-600 text-white border-red-600",
+      ringColor: "ring-red-400",
     },
   ];
 
@@ -145,7 +149,7 @@ export default function PresenceButtons({
       )}
 
       {/* Botões de presença */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {buttons.map((btn) => {
           const isActive = currentStatus === btn.status;
           const isDisabled = loading || (!paymentValid && requiresPayment);
@@ -157,9 +161,9 @@ export default function PresenceButtons({
               onClick={() => handleStatusChange(btn.status)}
               disabled={isDisabled}
               className={`
-                flex-1 py-3 px-4 rounded-lg border-2 font-semibold transition-all duration-200
+                py-3 px-2 sm:px-4 rounded-lg border-2 font-semibold transition-all duration-200
                 ${isActive 
-                  ? `${btn.activeColor} shadow-lg scale-105 ring-2 ring-offset-2 ring-${btn.activeColor.split('-')[1]}-400` 
+                  ? `${btn.activeColor} shadow-lg scale-105 ring-2 ring-offset-2 ${btn.ringColor}` 
                   : `${btn.color} ${btn.hoverColor} opacity-40 grayscale hover:opacity-100 hover:grayscale-0`
                 }
                 ${isDisabled

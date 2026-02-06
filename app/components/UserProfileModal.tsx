@@ -124,7 +124,7 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }: 
               userProfile.auto_chute !== null || userProfile.auto_drible !== null) && (
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Avaliações</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   {userProfile.auto_defesa !== null && (
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Defesa:</span>

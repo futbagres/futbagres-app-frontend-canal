@@ -283,7 +283,7 @@ export default function PaymentApprovalModal({
           </div>
 
           {/* Botões de ação */}
-          <div className="flex gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={handleApprove}
               disabled={processing}
@@ -291,7 +291,7 @@ export default function PaymentApprovalModal({
             >
               {processing ? (
                 <>
-                  <div className="animate-spin h-5 w-5 border-3 border-white border-t-transparent rounded-full"></div>
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
                   Processando...
                 </>
               ) : (

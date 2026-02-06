@@ -695,46 +695,46 @@ export default function DashboardPage() {
 
           {/* Abas de Navegação */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-1 mb-8">
-            <div className="flex space-x-1">
+            <div className="flex overflow-x-auto gap-1 scrollbar-hide">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                className={`min-w-fit flex-1 px-3 sm:px-6 py-3 rounded-lg font-semibold transition-all text-sm sm:text-base whitespace-nowrap ${
                   activeTab === 'overview'
                     ? 'bg-green-600 text-white shadow-md'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                🔎 Buscar Evento
+                🔎 <span className="hidden sm:inline">Buscar </span>Evento
               </button>
               <button
                 onClick={() => setActiveTab('nearby')}
-                className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                className={`min-w-fit flex-1 px-3 sm:px-6 py-3 rounded-lg font-semibold transition-all text-sm sm:text-base whitespace-nowrap ${
                   activeTab === 'nearby'
                     ? 'bg-green-600 text-white shadow-md'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                📍 Eventos Próximos
+                📍 <span className="hidden sm:inline">Eventos </span>Próximos
               </button>
               <button
                 onClick={() => setActiveTab('my-events')}
-                className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                className={`min-w-fit flex-1 px-3 sm:px-6 py-3 rounded-lg font-semibold transition-all text-sm sm:text-base whitespace-nowrap ${
                   activeTab === 'my-events'
                     ? 'bg-green-600 text-white shadow-md'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                ⚽ Meus Eventos
+                ⚽ <span className="hidden sm:inline">Meus </span>Eventos
               </button>
               <button
                 onClick={() => setActiveTab('registrations')}
-                className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                className={`min-w-fit flex-1 px-3 sm:px-6 py-3 rounded-lg font-semibold transition-all text-sm sm:text-base whitespace-nowrap ${
                   activeTab === 'registrations'
                     ? 'bg-green-600 text-white shadow-md'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                🎫 Minhas Inscrições
+                🎫 <span className="hidden sm:inline">Minhas </span>Inscrições
               </button>
             </div>
           </div>
@@ -864,7 +864,7 @@ export default function DashboardPage() {
                       >
                         {loadingLocation ? (
                         <>
-                          <div className="animate-spin h-5 w-5 border-3 border-blue-600 border-t-transparent rounded-full"></div>
+                          <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
                           Obtendo...
                         </>
                       ) : (
@@ -1480,10 +1480,10 @@ function EventCard({
             {/* Botões de Admin se o usuário for o criador */}
             {(onEdit || onAnalytics || onDelete) && (
               <div className="space-y-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={onView}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+                    className="flex-1 min-w-[120px] px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
                   >
                     Ver Detalhes
                   </button>
@@ -1496,7 +1496,7 @@ function EventCard({
                     </button>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {onAnalytics && (
                     <button 
                       onClick={onAnalytics}
@@ -1630,10 +1630,10 @@ function EventCard({
             {onEdit || onAnalytics || onDelete ? (
               // Botões de Admin (evento criado pelo usuário)
               <>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={onView}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+                    className="flex-1 min-w-[120px] px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
                   >
                     Ver Detalhes
                   </button>
@@ -1646,11 +1646,11 @@ function EventCard({
                     </button>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {onAnalytics && (
                     <button 
                       onClick={onAnalytics}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                      className="flex-1 min-w-[100px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
                     >
                       <span>📊</span>
                       Analytics
@@ -1659,7 +1659,7 @@ function EventCard({
                   {onViewParticipants && (
                     <button 
                       onClick={onViewParticipants}
-                      className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                      className="flex-1 min-w-[100px] px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
                     >
                       <span>👥</span>
                       Participantes
@@ -1736,10 +1736,10 @@ function EventCard({
                     )}
 
                     {/* Botões de ação */}
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button 
                         onClick={onView}
-                        className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-semibold"
+                        className="flex-1 min-w-[120px] px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-semibold"
                       >
                         Ver Detalhes
                       </button>

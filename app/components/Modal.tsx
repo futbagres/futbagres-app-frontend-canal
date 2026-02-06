@@ -43,11 +43,11 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
       {/* Modal */}
       <div
         ref={modalRef}
-        className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden"
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 flex items-center justify-between">
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate mr-2">
             {title}
           </h2>
           <button
@@ -70,7 +70,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
         </div>
 
         {/* Content */}
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );

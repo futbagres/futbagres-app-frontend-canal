@@ -585,11 +585,11 @@ export default function GameDayModal({
               <label className="block text-sm font-semibold text-gray-900 dark:text-white">
                 📊 Critério de Avaliação
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   onClick={() => setEvaluationType("historic")}
                   className={`
-                    p-6 rounded-lg border-2 transition-all
+                    p-4 sm:p-6 rounded-lg border-2 transition-all
                     ${
                       evaluationType === "historic"
                         ? "bg-blue-500 border-blue-600 text-white shadow-lg scale-105"
@@ -606,7 +606,7 @@ export default function GameDayModal({
                 <button
                   onClick={() => setEvaluationType("auto")}
                   className={`
-                    p-6 rounded-lg border-2 transition-all
+                    p-4 sm:p-6 rounded-lg border-2 transition-all
                     ${
                       evaluationType === "auto"
                         ? "bg-blue-500 border-blue-600 text-white shadow-lg scale-105"
@@ -641,7 +641,7 @@ export default function GameDayModal({
               >
                 {generating ? (
                   <>
-                    <div className="animate-spin h-5 w-5 border-3 border-white border-t-transparent rounded-full"></div>
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
                     Sorteando...
                   </>
                 ) : (

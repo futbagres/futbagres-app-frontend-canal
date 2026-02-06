@@ -283,11 +283,11 @@ export default function AmigosPage() {
         <div className="mx-auto max-w-6xl">
           
           {/* Header Rico com Perfil do Usuário */}
-          <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-3xl shadow-2xl p-8 mb-8 relative overflow-hidden">
+          <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-3xl shadow-2xl p-4 sm:p-8 mb-8 relative overflow-hidden">
             <div className="absolute inset-0 bg-black/10"></div>
-            <div className="relative z-10 flex items-center gap-6">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-white p-1 shadow-xl">
+            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+              <div className="relative flex-shrink-0">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white p-1 shadow-xl">
                   {userProfile?.avatar_url ? (
                     <img
                       src={userProfile.avatar_url}
@@ -307,11 +307,11 @@ export default function AmigosPage() {
                 )}
               </div>
               
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-white mb-2">
+              <div className="flex-1 text-center sm:text-left">
+                <h1 className="text-xl sm:text-3xl font-bold text-white mb-2">
                   {userProfile?.nome || user?.email}
                 </h1>
-                <div className="flex items-center gap-4 text-white/90 mb-3">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4 text-white/90 mb-3">
                   {userProfile?.posicao && (
                     <span className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full text-sm">
                       {getPositionEmoji(userProfile.posicao)} {userProfile.posicao}
@@ -336,7 +336,7 @@ export default function AmigosPage() {
               </div>
 
               {/* Toggle View Mode */}
-              <div className="flex gap-2 bg-white/20 backdrop-blur-sm rounded-lg p-1">
+              <div className="flex gap-2 bg-white/20 backdrop-blur-sm rounded-lg p-1 flex-shrink-0">
                 <button
                   onClick={() => setViewMode('list')}
                   className={`px-4 py-2 rounded-md transition-all ${

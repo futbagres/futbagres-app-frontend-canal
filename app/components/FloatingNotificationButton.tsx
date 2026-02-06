@@ -142,7 +142,7 @@ export default function FloatingNotificationButton({ userId }: FloatingNotificat
       {/* Botão Flutuante */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className={`fixed bottom-6 right-6 z-[150] w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 group ${
+        className={`fixed bottom-6 right-6 z-[90] w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 group ${
           isAnimating ? 'animate-bounce' : ''
         }`}
         title="Notificações"
