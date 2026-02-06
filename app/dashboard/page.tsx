@@ -30,7 +30,10 @@ import { formatarData, gerarDatasRecorrenciaMensal, eventoPassou } from "@/lib/d
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'overview' | 'nearby' | 'my-events' | 'registrations'>('overview');
   const [searchTerm, setSearchTerm] = useState("");
+  const [globalSearchResults, setGlobalSearchResults] = useState<Event[]>([]);
+  const [loadingGlobalSearch, setLoadingGlobalSearch] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -42,7 +45,7 @@ export default function DashboardPage() {
   
   // Estados para eventos próximos
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
-  const [selectedRadius, setSelectedRadius] = useState<RadiusValue>(10);
+  const [selectedRadius, setSelectedRadius] = useState<RadiusValue>(15);
   const [nearbyEvents, setNearbyEvents] = useState<Event[]>([]);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -65,6 +68,8 @@ export default function DashboardPage() {
   // Estados para dia do jogo
   const [gameDayModalOpen, setGameDayModalOpen] = useState(false);
   const [selectedEventForGameDay, setSelectedEventForGameDay] = useState<Event | null>(null);
+  const [bagreScore, setBagreScore] = useState<number | null>(null);
+  const [loadingBagreScore, setLoadingBagreScore] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -103,6 +108,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user) {
       loadMyEvents();
+      loadUserParticipations();
+      loadMyRegisteredEvents();
+      loadBagreScore();
+      // Carregar eventos próximos automaticamente ao montar o componente
+      handleGetLocation();
     }
   }, [user]);
 
@@ -113,22 +123,54 @@ export default function DashboardPage() {
     }
   }, [userLocation, selectedRadius]);
 
-  // Carregar participações do usuário
-  useEffect(() => {
-    if (user) {
-      loadUserParticipations();
-      loadMyRegisteredEvents();
-    }
-  }, [user]);
-
   // Carregar perfis dos criadores quando eventos mudarem
   useEffect(() => {
     loadCreatorProfiles();
   }, [nearbyEvents]);
 
-  const loadCreatorProfiles = async () => {
+  // Função para calcular BagreScore (média das avaliações recebidas)
+  const loadBagreScore = async () => {
+    if (!user) return;
+
     try {
-      const creatorIds = [...new Set(nearbyEvents.map(e => e.criador_id))];
+      setLoadingBagreScore(true);
+      
+      // Buscar todas as avaliações recebidas pelo usuário
+      const { data, error } = await supabase
+        .from('player_evaluations')
+        .select('defesa, velocidade, passe, chute, drible')
+        .eq('avaliado_id', user.id);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        setBagreScore(null);
+        return;
+      }
+
+      // Calcular média geral de todas as habilidades
+      const totalEvaluations = data.length;
+      const sumDefesa = data.reduce((sum: number, e: any) => sum + (e.defesa || 0), 0);
+      const sumVelocidade = data.reduce((sum: number, e: any) => sum + (e.velocidade || 0), 0);
+      const sumPasse = data.reduce((sum: number, e: any) => sum + (e.passe || 0), 0);
+      const sumChute = data.reduce((sum: number, e: any) => sum + (e.chute || 0), 0);
+      const sumDrible = data.reduce((sum: number, e: any) => sum + (e.drible || 0), 0);
+
+      const averageScore = (sumDefesa + sumVelocidade + sumPasse + sumChute + sumDrible) / (totalEvaluations * 5);
+      
+      setBagreScore(Math.round(averageScore * 10) / 10); // Arredondar para 1 casa decimal
+    } catch (error) {
+      console.error('Erro ao calcular BagreScore:', error);
+      setBagreScore(null);
+    } finally {
+      setLoadingBagreScore(false);
+    }
+  };
+
+  const loadCreatorProfiles = async (events?: Event[]) => {
+    try {
+      const allEvents = events || nearbyEvents;
+      const creatorIds = [...new Set(allEvents.map(e => e.criador_id))];
       if (creatorIds.length === 0) return;
 
       const { data, error } = await supabase
@@ -138,7 +180,7 @@ export default function DashboardPage() {
 
       if (error) throw error;
 
-      const profilesMap = new Map();
+      const profilesMap = new Map(creatorProfiles); // Preserve existing profiles
       data?.forEach((p: any) => {
         profilesMap.set(p.id, p as Profile);
       });
@@ -294,11 +336,76 @@ export default function DashboardPage() {
     }
   };
 
+  // Busca global de eventos
+  const searchAllEvents = async (term: string) => {
+    if (!term || term.trim() === '') {
+      setGlobalSearchResults([]);
+      return;
+    }
+
+    try {
+      setLoadingGlobalSearch(true);
+      console.log('🔍 Buscando eventos globalmente:', term);
+
+      // Verificar se o termo parece ser um UUID válido
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term);
+      
+      // Buscar por título, local, descrição e ID (só se for UUID)
+      let query = supabase
+        .from('events')
+        .select('*');
+      
+      if (isUUID) {
+        query = query.or(`titulo.ilike.%${term}%,id.eq.${term},local.ilike.%${term}%,descricao.ilike.%${term}%`);
+      } else {
+        query = query.or(`titulo.ilike.%${term}%,local.ilike.%${term}%,descricao.ilike.%${term}%`);
+      }
+      
+      const { data, error } = await query
+        .eq('status', 'ativo')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro na busca global:', error);
+        throw error;
+      }
+
+      console.log('✅ Eventos encontrados:', data?.length || 0);
+      setGlobalSearchResults(data || []);
+    } catch (error: any) {
+      console.error('Erro ao buscar eventos:', error.message);
+      setGlobalSearchResults([]);
+    } finally {
+      setLoadingGlobalSearch(false);
+    }
+  };
+
+  // Effect para busca global
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchTerm) {
+        searchAllEvents(searchTerm);
+      } else {
+        setGlobalSearchResults([]);
+      }
+    }, 500); // Debounce de 500ms
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+
+  // Carregar perfis dos criadores dos eventos da busca global
+  useEffect(() => {
+    if (globalSearchResults.length > 0) {
+      loadCreatorProfiles(globalSearchResults);
+    }
+  }, [globalSearchResults]);
+
   // Filtrar eventos com base na busca (incluindo eventos próximos e inscritos)
   const filteredEvents = myEvents.filter((event) => {
     const matchesSearch = searchTerm === '' || 
       event.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.local?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.id.toString().includes(searchTerm);
     return matchesSearch;
   });
@@ -307,6 +414,7 @@ export default function DashboardPage() {
     const matchesSearch = searchTerm === '' || 
       event.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.local?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.id.toString().includes(searchTerm);
     return matchesSearch;
   });
@@ -315,6 +423,7 @@ export default function DashboardPage() {
     const matchesSearch = searchTerm === '' || 
       event.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.local?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.id.toString().includes(searchTerm);
     return matchesSearch;
   });  const handleCreateEvent = () => {
@@ -511,67 +620,249 @@ export default function DashboardPage() {
           {/* Cabeçalho */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              Dashboard
+              Visão Geral
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
               Bem-vindo de volta, <span className="font-semibold text-green-600">{profile?.nome}</span>!
             </p>
           </div>
 
-          {/* Busca de Eventos */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              🔍 Buscar Evento
-            </h2>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Digite o título, ID ou local do evento..."
-                className="w-full px-4 py-3 pl-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">
-                🔎
-              </span>
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                >
-                  ✕
-                </button>
-              )}
+          {/* Cards de Resumo */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <button
+              onClick={() => setActiveTab('nearby')}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                  <span className="text-2xl">📍</span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Eventos Próximos</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{nearbyEvents.length}</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('my-events')}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                  <span className="text-2xl">⚽</span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Meus Eventos</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{myEvents.length}</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('registrations')}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                  <span className="text-2xl">🎫</span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Inscrições</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{myRegisteredEvents.length}</p>
+                </div>
+              </div>
+            </button>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                  <span className="text-2xl">⭐</span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">BagreScore</p>
+                  {loadingBagreScore ? (
+                    <div className="animate-pulse h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  ) : bagreScore !== null ? (
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{bagreScore.toFixed(1)} ⭐</p>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Sem avaliações</p>
+                  )}
+                </div>
+              </div>
             </div>
-            {searchTerm && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                {filteredEvents.length} evento(s) encontrado(s)
-              </p>
-            )}
           </div>
 
-          {/* Seções de Eventos */}
-          <div className="space-y-8">
-            {/* Eventos Próximos a Mim */}
-            <section>
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white mb-4">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div>
+          {/* Abas de Navegação */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-1 mb-8">
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                  activeTab === 'overview'
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                🔎 Buscar Evento
+              </button>
+              <button
+                onClick={() => setActiveTab('nearby')}
+                className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                  activeTab === 'nearby'
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                📍 Eventos Próximos
+              </button>
+              <button
+                onClick={() => setActiveTab('my-events')}
+                className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                  activeTab === 'my-events'
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                ⚽ Meus Eventos
+              </button>
+              <button
+                onClick={() => setActiveTab('registrations')}
+                className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                  activeTab === 'registrations'
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                🎫 Minhas Inscrições
+              </button>
+            </div>
+          </div>
+
+          {/* Botão Criar Evento */}
+          <div className="mb-8 flex justify-end">
+            <button
+              onClick={() => router.push('/dashboard/events/new')}
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center gap-2 shadow-lg"
+            >
+              <span>+</span>
+              Criar Evento
+            </button>
+          </div>
+
+          {/* Conteúdo das Abas */}
+          {activeTab === 'overview' && (
+            <>
+              {/* Busca Global */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  🔍 Buscar Todos os Eventos
+                </h2>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Digite o título, ID ou local do evento..."
+                    className="w-full px-4 py-3 pl-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">
+                    🔎
+                  </span>
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                {searchTerm && (
+                  <div className="mt-2">
+                    {loadingGlobalSearch ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        🔍 Buscando eventos...
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {globalSearchResults.length} evento(s) encontrado(s)
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Resultados da Busca Global */}
+              {searchTerm && globalSearchResults.length > 0 && (
+                <section className="mb-8">
+                  <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-xl shadow-lg p-6 text-white mb-4">
                     <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                      📍 Eventos Próximos a Mim
+                      🔍 Resultados da Busca
                     </h2>
-                    <p className="text-blue-100 text-sm">
-                      Descubra eventos de futebol acontecendo perto de você
+                    <p className="text-green-100 text-sm">
+                      Encontramos {globalSearchResults.length} evento(s) para "{searchTerm}"
                     </p>
                   </div>
-                  
-                  {!userLocation ? (
-                    <button
-                      onClick={handleGetLocation}
-                      disabled={loadingLocation}
-                      className="px-6 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center whitespace-nowrap"
-                    >
-                      {loadingLocation ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {globalSearchResults.map((event: Event) => {
+                      const participation = userParticipations.get(event.id);
+                      const creatorProfile = creatorProfiles.get(event.criador_id);
+                      const isCreator = event.criador_id === user?.id;
+                      
+                      return (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          onView={() => handleViewEvent(event)}
+                          onEdit={isCreator ? () => handleEditEvent(event) : undefined}
+                          onAnalytics={isCreator ? () => handleViewAnalytics(event) : undefined}
+                          onDelete={isCreator ? () => handleDeleteEvent(event) : undefined}
+                          onRegister={!isCreator && !participation ? () => handleRegisterForEvent(event) : undefined}
+                          onCancelRegistration={!isCreator && participation ? () => handleCancelRegistration(event) : undefined}
+                          onPayment={!isCreator && participation ? () => handleOpenPaymentModal(event) : undefined}
+                          onViewParticipants={() => handleOpenParticipantsModal(event)}
+                          onGameDay={isCreator ? () => {
+                            setSelectedEventForGameDay(event);
+                            setGameDayModalOpen(true);
+                          } : undefined}
+                          showDistance={true}
+                          isRegistered={!!participation}
+                          registrationStatus={participation?.status}
+                          participation={participation}
+                          currentUserId={user?.id}
+                          creatorProfile={creatorProfile}
+                        />
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+
+          {activeTab === 'nearby' && (
+            <>
+              {/* Eventos Próximos a Mim */}
+              <section>
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white mb-4">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                        📍 Eventos Próximos a Mim
+                      </h2>
+                      <p className="text-blue-100 text-sm">
+                        Descubra eventos de futebol acontecendo perto de você
+                      </p>
+                    </div>
+                    
+                    {!userLocation ? (
+                      <button
+                        onClick={handleGetLocation}
+                        disabled={loadingLocation}
+                        className="px-6 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center whitespace-nowrap"
+                      >
+                        {loadingLocation ? (
                         <>
                           <div className="animate-spin h-5 w-5 border-3 border-blue-600 border-t-transparent rounded-full"></div>
                           Obtendo...
@@ -718,20 +1009,21 @@ export default function DashboardPage() {
                 </div>
               )}
             </section>
+            </>
+          )}
 
-            {/* Meus Eventos Criados */}
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  ⚽ Meus Eventos Criados
-                </h2>
-                <button
-                  onClick={handleCreateEvent}
-                  className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  + Criar Evento
-                </button>
-              </div>
+          {activeTab === 'my-events' && (
+            <>
+              {/* Meus Eventos Criados */}
+              <section>
+                <div className="mb-4">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    ⚽ Meus Eventos Criados
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    Gerencie os eventos que você organizou
+                  </p>
+                </div>
               
               {loadingEvents ? (
                 <div className="flex items-center justify-center py-12">
@@ -781,14 +1073,21 @@ export default function DashboardPage() {
                 </div>
               )}
             </section>
+            </>
+          )}
 
-            {/* Meus Próximos Eventos */}
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  📅 Meus Próximos Eventos
-                </h2>
-              </div>
+          {activeTab === 'registrations' && (
+            <>
+              {/* Meus Eventos Inscritos */}
+              <section>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    🎫 Meus Eventos Inscritos
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    Eventos nos quais você está participando
+                  </p>
+                </div>
 
               {loadingRegisteredEvents ? (
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
@@ -877,7 +1176,8 @@ export default function DashboardPage() {
                 </div>
               </div>
             </section>
-          </div>
+            </>
+          )}
         </div>
       </main>
       <Footer />
@@ -1177,6 +1477,68 @@ function EventCard({
         {showDistance ? (
           // Botões para eventos próximos (visualizar e inscrever)
           <>
+            {/* Botões de Admin se o usuário for o criador */}
+            {(onEdit || onAnalytics || onDelete) && (
+              <div className="space-y-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex gap-2">
+                  <button 
+                    onClick={onView}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+                  >
+                    Ver Detalhes
+                  </button>
+                  {onEdit && (
+                    <button 
+                      onClick={onEdit}
+                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-semibold"
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {onAnalytics && (
+                    <button 
+                      onClick={onAnalytics}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                    >
+                      <span>📊</span>
+                      Analytics
+                    </button>
+                  )}
+                  {onViewParticipants && (
+                    <button 
+                      onClick={onViewParticipants}
+                      className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                    >
+                      <span>👥</span>
+                      Participantes
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button 
+                      onClick={onDelete}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                      title="Excluir evento"
+                    >
+                      <span>🗑️</span>
+                    </button>
+                  )}
+                </div>
+                
+                {/* Botão DIA DE JOGO - Aparece 24h antes do evento */}
+                {showGameDayButton && (
+                  <button 
+                    onClick={onGameDay}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all text-sm font-bold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 animate-pulse"
+                  >
+                    <span className="text-xl">🏆</span>
+                    DIA DE JOGO
+                  </button>
+                )}
+              </div>
+            )}
+
             {isRegistered ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
